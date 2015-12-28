@@ -18,18 +18,20 @@ def pointFingers(seqLen):
 
 class chain(object):
 
-    def __init__(self):
+    def __init__(self, entries=None, nodes=None):
         """ Create a new chain object """
         # This holds the actual log entries
         # it is a sequnence of byte arrays
         self.entries = []
-
-        # The hash corresponding to the previous hash
-        self.currentHash = initialH
+        if entries is not None:
+            self.entries = entries
 
         # The list of 'nodes' holding hashes of the current entry,
         # and a sequence of previous node hashes.
         self.nodes = []
+        if nodes is not None:
+            self.nodes = nodes
+
 
     def head(self):
         """ Return the head of the chain """
@@ -53,8 +55,8 @@ class chain(object):
 
         nodeH = nodeDigest.digest()
 
-        self.entries += [entryH]
-        self.nodes += [nodeH]
+        self.entries.append(entryH)
+        self.nodes.append(nodeH)
 
         return len(self.entries) - 1
 
