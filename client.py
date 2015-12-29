@@ -7,6 +7,8 @@ from store import diskHashList
 import logging
 from binascii import hexlify
 
+import sys
+
 logging.basicConfig(
     format='%(asctime)s.%(msecs)s:%(name)s:%(thread)d:%(levelname)s:%(process)d:%(message)s',
     level=logging.WARNING
@@ -14,13 +16,15 @@ logging.basicConfig(
 
 
 def main():
+    kafka_url = sys.argv[1]
+
     ## Register to read messages from the "rousseau" list
     consumer = KafkaConsumer('rousseau',
                              group_id='my_group',
-                             bootstrap_servers=['192.168.1.142:9092'])
+                             bootstrap_servers=[kafka_url])
 
     ## Register to send to the rousseau-chain channel
-    kafka = KafkaClient('192.168.1.142:9092')
+    kafka = KafkaClient(kafka_url)
     producer = SimpleProducer(kafka)
 
     # Initialize a chain backed by 2 disk files
