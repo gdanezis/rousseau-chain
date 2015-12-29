@@ -21,6 +21,19 @@ def test_check():
     assert check_evidence(c.head(), 100, e)
     assert check_evidence(c.head(), 100, e, entry="Hello")
 
+def test_check_zero():
+    c = chain()
+    c.add("Hello")
+
+    # Add a lot of those
+    for _ in xrange(1000):
+        c.add("Hello")
+
+    # Produce and check evidence
+    e = c.evidence(0)
+    assert check_evidence(c.head(), 0, e)
+
+
 def test_check_negative():
     c = chain()
     c.add("Hello")
@@ -70,5 +83,5 @@ def test_ensure_prefix():
     assert check_evidence(new_head, seq, e, node=head)
 
 def test_pointFingers():
-    assert list(pointFingers(16)) == [15,14, 12, 8]
-    assert len(list(pointFingers(256))) == 8
+    assert list(pointFingers(16)) == [15,14, 12, 8, 0]
+    assert len(list(pointFingers(256))) == 9

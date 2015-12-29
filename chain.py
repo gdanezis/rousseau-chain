@@ -12,7 +12,7 @@ initialH = H("Om").digest()
 def pointFingers(seqLen):
     """ Returns the indexes for a paricular sequence ID """
     seq = 1
-    while seq < seqLen:
+    while seq <= seqLen:
         yield seqLen - seq
         seq = seq * 2
 
