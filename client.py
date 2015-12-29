@@ -16,6 +16,7 @@ logging.basicConfig(
 
 
 def main():
+    ## Pass the kafka_url, e.g. `192.168.1.110:9092`
     kafka_url = sys.argv[1]
 
     ## Register to read messages from the "rousseau" list
