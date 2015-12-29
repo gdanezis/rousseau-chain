@@ -35,7 +35,7 @@ def main():
                                              message.value))
 
         seq = c.add(message.value)
-        response = "%s head=%s value=%s" % (seq, hexlify(c.head()), message.value)
+        response = "%s|%s|%s" % (seq, hexlify(c.head()), message.value)
         print (response)
 
         # Note that the application is responsible for encoding messages to type bytes
