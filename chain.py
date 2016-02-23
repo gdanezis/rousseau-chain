@@ -10,7 +10,7 @@ from struct import pack
 initialH = H("Om").digest()
 
 def pointFingers(seqLen):
-    """ Returns the indexes for a paricular sequence ID """
+    """ Returns the indexes for a particular sequence ID """
     seq = 1
     while seq <= seqLen:
         yield seqLen - seq
@@ -85,7 +85,7 @@ class chain(object):
 
 def check_evidence(head, seq, evidence, entry=None, node=None):
     """ Check that a bundle of evidence is correct, and correspond to,
-    a known head, and optionaly a known entry and known node. Returns
+    a known head, and optionally a known entry and known node. Returns
     True or raises an exception. """
     entries, nodes = evidence
     head_index = max(entries.keys())
