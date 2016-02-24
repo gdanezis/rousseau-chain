@@ -110,6 +110,14 @@ class Rcore(Protocol):
             self.msgSend(resp)
             return
 
+        # TODO: Add checks here.
+        # - Extract the checker service, and ensure it is running.
+        # - Extract all the dependencies.
+        # - Gather the evidence into a bundle.
+        # - Submit to checker, and get the response.
+        # - Either seal or reject.
+
+
         # Seal the object
         hbodyhash = self.factory.chain.seal(msg["object"])        
 
@@ -200,7 +208,7 @@ def test_do_head(tfactory):
 
 def test_do_seal(tfactory):
     _flushDB()
-    
+
     proto, tr = tfactory
     ser = {"action":"seal", "object":["Hello", "World"]}
 
