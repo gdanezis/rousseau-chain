@@ -13,6 +13,8 @@ import redis
 class HChain():
 
     def __init__(self, name):
+        ''' Initialize the chain, with a name. '''
+
         # Remember our names
         self.name = name
         self.namehead = "%s-head" % name
@@ -25,9 +27,13 @@ class HChain():
             self.r.set(self.namehead, self._head)
 
     def head(self):
+        ''' Returns the current head of the chain. '''
+
         return self._head
 
     def seal(self, hobject):
+        ''' Seals an object into the chain, and returns its hash. '''
+
         # Build and store the object itself.
         hbody = msgpack.packb(hobject)
         hbodyhash = sha256(hbody).digest()
@@ -88,12 +94,15 @@ class Rcore(Protocol):
 
 
     def do_head(self, msg):
+        ''' Returns the current head of the chain. '''
+
         # Return the head of the chain.
         resp = {"code":"OK", "head":self.factory.chain.head()}
         self.msgSend(resp)
         return
 
     def do_seal(self, msg):
+        ''' Seals an onject into the chain, and return current head. '''
         
         # If there is no object, return an error.
         if "object" not in msg:
