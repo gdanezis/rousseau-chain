@@ -50,9 +50,7 @@ class HChain():
 
         return hbodyhash
 
-
-class Rcore(Protocol):
-
+class MsgPackProtocol(Protocol):
     def connectionMade(self):
         pass
 
@@ -64,6 +62,16 @@ class Rcore(Protocol):
                 self.msgReceived(unpacked)
         except:
             self.transport.loseConnection()
+
+    def msgSend(self, msg):
+        ''' Serialize the message in msgpack format '''
+        self.transport.write(msgpack.packb(msg))
+
+
+    def msgReceived(self, msg):
+        pass
+
+class Rcore(MsgPackProtocol):
 
     def msgReceived(self, msg):
         ''' Process incoming messages '''
@@ -125,11 +133,6 @@ class Rcore(Protocol):
         resp = {"code":"OK", "head":self.factory.chain.head(), "hobject":hbodyhash}
         self.msgSend(resp)
         return
-
-
-    def msgSend(self, msg):
-        ''' Serialize the message in msgpack format '''
-        self.transport.write(msgpack.packb(msg))
 
 
 class RcoreFactory(Factory):
@@ -288,5 +291,5 @@ def test_chain():
 
 if __name__ == "__main__":
     endpoint = TCP4ServerEndpoint(reactor, 8007)
-    endpoint.listen(RcoreFactory("configurable quote"))
+    endpoint.listen(RcoreFactory("name"))
     reactor.run()

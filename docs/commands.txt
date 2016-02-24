@@ -1,0 +1,8 @@
+# How to build the Docker container
+sudo docker build -t gdanezis/rousseau .
+
+# How to enter the Docker container (for manual debugging)
+sudo docker run --name XXXX -t -i gdanezis/rousseau /bin/bash
+
+# How to launch the service, attaching a port 9192 to container port 9191
+sudo dockerun -d -p 9192:9191 gdanezis/rousseau python checker.py
