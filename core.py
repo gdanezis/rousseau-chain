@@ -1,4 +1,6 @@
 from StringIO import StringIO
+from binascii import hexlify
+from hashlib import sha256
 
 from twisted.internet.protocol import Factory, Protocol
 from twisted.internet.endpoints import TCP4ServerEndpoint
@@ -6,16 +8,16 @@ from twisted.internet import reactor
 
 import msgpack
 import redis
-from hashlib import sha256
 
-from binascii import hexlify
 
 class HChain():
 
     def __init__(self, name):
+        # Remember our names
         self.name = name
         self.namehead = "%s-head" % name
 
+        # Connect to the datbase
         self.r = redis.StrictRedis(host='localhost', port=6379, db=0)
         self._head = self.r.get(self.namehead)
         if self._head is None:
@@ -36,11 +38,11 @@ class HChain():
         hblockhash = sha256(hblock).digest()
         self.r.set(hblockhash, hblock)
 
+        # Record new head
         self._head = hblockhash
         self.r.set(self.namehead, self._head)
 
-    def __del__(self):
-        self.r.quit()
+        return hbodyhash
 
 
 class Rcore(Protocol):
@@ -49,6 +51,7 @@ class Rcore(Protocol):
         pass
 
     def dataReceived(self, data):
+        ''' Decerialize incoming messages '''
         try:
             unpacker = msgpack.Unpacker(StringIO(data))
             for unpacked in unpacker:
@@ -57,8 +60,10 @@ class Rcore(Protocol):
             self.transport.loseConnection()
 
     def msgReceived(self, msg):
+        ''' Process incoming messages '''
+
         # Detect an action
-        if action not in msg:
+        if "action" not in msg:
             self.msgSend({"code":"Error", "msg":"Missing action."})
             return
 
@@ -68,18 +73,41 @@ class Rcore(Protocol):
             self.do_info(msg)
             return
 
-        elif action == "add":
-            self.do_add(msg)
+        elif action == "seal":
+            self.do_seal(msg)
             return
 
         elif action == "head":
-            self.do_info(head)
+            self.do_head(msg)
             return
 
         else:
             # Unknown action
             self.msgSend({"code":"Error", "msg":"Unknown action."})
             return
+
+
+    def do_head(self, msg):
+        # Return the head of the chain.
+        resp = {"code":"OK", "head":self.factory.chain.head()}
+        self.msgSend(resp)
+        return
+
+    def do_seal(self, msg):
+        
+        # If there is no object, return an error.
+        if "object" not in msg:
+            resp = {"code":"Error", "msg":"No object found (in seal function)"}
+            self.msgSend(resp)
+            return
+
+        # Seal the object
+        hbodyhash = self.factory.chain.seal(msg["object"])        
+
+        # Respond
+        resp = {"code":"OK", "head":self.factory.chain.head(), "hobject":hbodyhash}
+        self.msgSend(resp)
+        return
 
 
     def msgSend(self, msg):
@@ -92,8 +120,8 @@ class RcoreFactory(Factory):
     # This will be used by the default buildProtocol to create new protocols:
     protocol = Rcore
 
-    def __init__(self):
-        pass
+    def __init__(self, name):
+        self.chain = HChain(name)
 
 ## ----------- TESTS ------------ ##
 
@@ -108,7 +136,7 @@ def _flushDB():
 @pytest.fixture
 def tfactory():
     ''' Create a RCore Protocol ready to test '''
-    factory = RcoreFactory()
+    factory = RcoreFactory('test1')
     proto = factory.buildProtocol(('127.0.0.1', 0))
     tr = proto_helpers.StringTransport()
     proto.makeConnection(tr)
@@ -142,6 +170,42 @@ def test_protocol_unmarshall(monkeypatch, tfactory):
 
     assert [{"Hello":"World"}] == data[0]
 
+def test_do_head(tfactory):
+    proto, tr = tfactory
+    ser = {"action":"head"}
+
+    # Ensure sending encoding works
+    proto.msgReceived(ser)
+    unpacker = msgpack.Unpacker(StringIO(tr.value()))
+    unpacker = list(unpacker)
+    assert len(unpacker) == 1
+
+    for unpacked in unpacker:
+        assert "head" in unpacked
+        assert unpacked["code"] == "OK"
+        assert unpacked["head"] == proto.factory.chain.head()
+
+    _flushDB()
+
+def test_do_seal(tfactory):
+    proto, tr = tfactory
+    ser = {"action":"seal", "object":["Hello", "World"]}
+
+    # Ensure sending encoding works
+    proto.msgReceived(ser)
+    unpacker = msgpack.Unpacker(StringIO(tr.value()))
+    unpacker = list(unpacker)
+    assert len(unpacker) == 1
+
+    for unpacked in unpacker:
+        assert "head" in unpacked
+        assert "hobject" in unpacked
+        assert unpacked["code"] == "OK"
+        assert unpacked["head"] == proto.factory.chain.head()
+
+    _flushDB()
+
+
 def test_flushDB():
     r = redis.StrictRedis(host='localhost', port=6379, db=0)
     r.set("x", "y")
@@ -150,6 +214,7 @@ def test_flushDB():
     assert r.get("x") == None
 
 def test_chain():
+    _flushDB()
 
     # Two same chains
     
@@ -194,6 +259,8 @@ def test_chain():
     h1_head_prime = h3.head()
 
     assert h1_head == h1_head_prime
+
+    _flushDB()
 
 
 ## ----------- MAIN ------------ ##
