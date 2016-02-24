@@ -2,7 +2,7 @@ from StringIO import StringIO
 from binascii import hexlify
 from hashlib import sha256
 
-from twisted.internet.protocol import Factory, Protocol
+from twisted.internet.protocol import Factory, Protocol, ClientFactory
 from twisted.internet.endpoints import TCP4ClientEndpoint
 from twisted.internet import reactor
 
@@ -19,14 +19,26 @@ class CheckerTestProtocol(MsgPackProtocol):
         reactor.stop()
 
 
-class CheckerTestFactory(Factory):
+class CheckerTestFactory(ClientFactory):
     protocol = CheckerTestProtocol
         
+    def clientConnectionLost(self, connector, reason):
+        print("Connection refused ...")
+        print (reason)
+        reactor.stop()
+
+    def clientConnectionFailed(self, connector, reason):
+        print("Connection failed ...")
+        print (reason)
+        reactor.stop()
+
+
 def gotProtocol(proto):
     proto.msgSend({"action":"ping"})
     
 def gotError(err):
-    raise err
+    print("Error: %s" % err.value)
+    reactor.stop()
 
 if __name__ == "__main__":
     point = TCP4ClientEndpoint(reactor, "localhost", 9192)
