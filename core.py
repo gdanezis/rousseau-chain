@@ -180,6 +180,8 @@ def test_protocol_unmarshall(monkeypatch, tfactory):
     assert [{"Hello":"World"}] == data[0]
 
 def test_do_head(tfactory):
+    _flushDB()
+
     proto, tr = tfactory
     ser = {"action":"head"}
 
@@ -197,6 +199,8 @@ def test_do_head(tfactory):
     _flushDB()
 
 def test_do_seal(tfactory):
+    _flushDB()
+    
     proto, tr = tfactory
     ser = {"action":"seal", "object":["Hello", "World"]}
 
