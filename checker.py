@@ -45,7 +45,7 @@ class CheckerProtocol(MsgPackProtocol):
         return
 
     def do_check(self, msg):
-        ''' Seals an onject into the chain, and return current head. '''
+        ''' Checks the transaction is valid. '''
         
         # If there is no object, return an error.
         if "object" not in msg:
