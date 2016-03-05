@@ -1,4 +1,6 @@
 
+VERSION = "0.0.1"
+
 from hashlib import sha256
 
 def h(item):
@@ -37,6 +39,10 @@ class Leaf:
 	def is_in(self, store, item):
 		return item == self.item
 
+def _check_hash(key, val):
+	if key != val.identity():
+		raise Exception("Value has the wrong hash.")
+
 class Branch:
 
 	__slots__ = ["pivot", "left_branch", "right_branch"]
@@ -52,14 +58,16 @@ class Branch:
 	def add(self, store, item):
 		if item <= self.pivot:
 			b_left = store[self.left_branch]
-			new_b_left = b_left.add(store, item)
+			_check_hash(self.left_branch, b_left)
 
+			new_b_left = b_left.add(store, item)
 			b = Branch(self.pivot, new_b_left.identity(), self.right_branch)
 			
 		else:
 			b_right = store[self.right_branch]
-			new_b_right = b_right.add(store, item)
+			_check_hash(self.right_branch, b_right)
 
+			new_b_right = b_right.add(store, item)
 			b = Branch(self.pivot, self.left_branch, new_b_right.identity())
 
 		store[b.identity()] = b
@@ -143,133 +151,30 @@ def ext_hook(code, data):
 	return ExtType(code, data)
 
 
-class RegisStore():
-	def __init__(self):
-		self.r = redis.StrictRedis(host="localhost", port=6379, db=0)
+class RedisStore():
+	def __init__(self, host="localhost", port=6379, db=0):
+		""" Initialize a Redis backed store for the Merkle Tree. """
+		self.r = redis.StrictRedis(host=host, port=port, db=db)
+		self.cache = {}
 
 	def __getitem__(self, key):
+		if key in self.cache:
+			return self.cache[key]
+		
+		if len(self.cache) > 10000:
+			self.cache = {} 
+
 		bdata = self.r.get(key)
 		branch = msgpack.unpackb(bdata, ext_hook=ext_hook)
 		assert key == branch.identity()
+		self.cache[key] = branch
 		return branch
 
 	def __setitem__(self, key, value):
+		if key in self.cache:
+			return
+
 		bdata = msgpack.packb(value, default=default)
 		assert key == value.identity()
 		self.r.set(key, bdata)
-
-def _flushDB():
-    r = redis.StrictRedis(host='localhost', port=6379, db=0)
-    r.flushdb()
-
-def test_store():
-	_flushDB()
-
-	r = RegisStore()
-
-	l = Leaf("Hello")
-	r[l.identity()] = l
-	assert r[l.identity()].identity() == l.identity()
-
-def test_store_tree():
-	_flushDB()
-
-	r = RegisStore()
-	t = Tree(store = r)	
-
-	from os import urandom
-	for _ in range(100):
-		item = urandom(32)
-		t.add(item)
-		assert t.is_in(item)
-		assert not t.is_in(urandom(32))
-
-
-
-## ============== TESTS ===================
-
-def test_leaf_isin():
-	l = Leaf("Hello")
-	store = {l.identity() : l}
-	b = l.add(store, "World")
-	assert l.is_in(store, "Hello")
-
-
-def test_Branch_isin():
-	l = Leaf("Hello")
-	store = {l.identity() : l}
-	b = l.add(store, "World")
-	assert b.is_in(store, "Hello")
-	assert b.is_in(store, "World")
-		
-
-def test_Branch_add():
-	l = Leaf("Hello")
-	store = {l.identity() : l}
-	b = l.add(store, "World")
-
-	b2 = b.add(store, "Doom")
-	assert isinstance(b2, Branch)
-
-	assert b2.left_branch in store
-	assert b2.right_branch in store
-	assert b2.identity() in store
-
-	b2.check(store)
-
-def test_add_like_fucking_monkey():
-	
-	root = Leaf("Hello")
-	store = {root.identity() : root}
-
-	from os import urandom
-	for _ in range(100):
-		item = urandom(32)
-		root = root.add(store, item)
-		root.check(store)
-		assert root.is_in(store, item)
-
-def test_Leaf_add():
-	l = Leaf("Hello")
-	store = {l.identity() : l}
-
-	b = l.add(store, "World")
-
-	assert isinstance(b, Branch)
-
-	assert b.left_branch in store
-	assert b.right_branch in store
-	assert b.identity() in store
-
-	assert store[b.left_branch].item <= b.pivot
-	assert store[b.right_branch].item > b.pivot
-
-
-def test_Tree():
-	t = Tree()
-
-def test_add_isin():
-	t = Tree()
-
-	# Test positive case
-	t.add("Hello")
-	assert t.is_in("Hello") == True
-
-def test_fail_isin():
-	t = Tree()
-
-	# Test negative case
-	assert t.is_in("World") == False
-
-def test_massive():
-	t = Tree()	
-
-	from os import urandom
-	for _ in range(100):
-		item = urandom(32)
-		t.add(item)
-		assert t.is_in(item)
-		assert not t.is_in(urandom(32))
-
-
 
