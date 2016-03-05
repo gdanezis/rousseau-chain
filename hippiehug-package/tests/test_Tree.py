@@ -15,7 +15,7 @@ def test_evidence():
 	E = t.evidence("World")
 	assert len(E) == 2
 
-	store = dict((e.identity, e) for e in E)
+	store = dict((e.identity(), e) for e in E)
 	t2 = Tree(store, E[0].identity())
 	assert t2.is_in("World")
 
@@ -74,7 +74,7 @@ def test_Branch_add():
 
 	b2.check(store)
 
-def test_add_like_fucking_monkey():
+def test_add_like_a_monkey():
 	
 	root = Leaf("Hello")
 	store = {root.identity() : root}
