@@ -1,6 +1,20 @@
 from hippiehug import RedisStore, Tree, Leaf, Branch
 import redis
 
+
+## ============== TESTS ===================
+
+
+def test_evidence():
+	t = Tree()
+
+	# Test positive case
+	t.add("Hello")
+	t.add("World")
+
+	E = t.evidence("World")
+	assert len(E) == 2
+
 def _flushDB():
     r = redis.StrictRedis(host='localhost', port=6379, db=0)
     r.flushdb()
@@ -26,10 +40,6 @@ def test_store_tree():
 		t.add(item)
 		assert t.is_in(item)
 		assert not t.is_in(urandom(32))
-
-
-
-## ============== TESTS ===================
 
 def test_leaf_isin():
 	l = Leaf("Hello")

@@ -39,6 +39,9 @@ class Leaf:
 	def is_in(self, store, item):
 		return item == self.item
 
+	def evidence(self, store, evidence, item):
+		return evidence + [ self ]
+
 def _check_hash(key, val):
 	if key != val.identity():
 		raise Exception("Value has the wrong hash.")
@@ -79,6 +82,13 @@ class Branch:
 		else:	
 			return store[self.right_branch].is_in(store, item)
 
+
+	def evidence(self, store, evidence, item):
+		evidence = evidence + [ self ]
+		if item <= self.pivot:
+			return store[self.left_branch].evidence(store, evidence, item)
+		else:	
+			return store[self.right_branch].evidence(store, evidence, item)
 
 	def check(self, store):
 		assert self.left_branch in store
@@ -124,6 +134,17 @@ class Tree:
 		key = h(item)
 		head_element = self.store[self.head]
 		return head_element.is_in(self.store, key)
+
+	def evidence(self, item):
+		""" Gathers evidence about the inclusion / exclusion of the item. """
+		if self.head == None:
+			return []
+
+		key = h(item)
+		head_element = self.store[self.head]
+		return head_element.evidence(self.store, [], key)
+
+
 
 import redis
 import msgpack
