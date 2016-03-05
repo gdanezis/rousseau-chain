@@ -6,6 +6,9 @@ def h(item):
 	return sha256(item).digest()
 
 class Leaf:
+
+	__slots__ = ["item"]
+
 	def __init__(self, item):
 		self.item = item
 
@@ -17,6 +20,10 @@ class Leaf:
 		l = Leaf(item)
 		leaf_id = l.identity()
 		store[leaf_id] = l
+
+		# Only add once
+		if item == self.item:
+			return self
 
 		# Add the new branch
 		if self.item < item:
@@ -31,6 +38,9 @@ class Leaf:
 		return item == self.item
 
 class Branch:
+
+	__slots__ = ["pivot", "left_branch", "right_branch"]
+
 	def __init__(self, pivot, left_branch_id, right_branch_id):
 		self.pivot = pivot
 		self.left_branch = left_branch_id
@@ -40,7 +50,7 @@ class Branch:
 		return h("B" + self.pivot + self.left_branch + self.right_branch)
 
 	def add(self, store, item):
-		if item < self.pivot:
+		if item <= self.pivot:
 			b_left = store[self.left_branch]
 			new_b_left = b_left.add(store, item)
 
@@ -81,11 +91,13 @@ class Branch:
 
 
 class Tree:
-	def __init__(self):
-		self.head = None
-		self.store = { }  ## This is our remote (key -> value) store
+	def __init__(self, store = {}, root_hash = None):
+		""" Initiates a Merkle tree from a store and a root hash. """
+		self.head = root_hash
+		self.store = store  ## This is our remote (key -> value) store
 
 	def add(self, item):
+		""" Add and element to the Merkle tree. """
 		key = h(item)
 		if self.head == None:
 			l = Leaf(key)
@@ -97,12 +109,81 @@ class Tree:
 			self.head = new_head_elem.identity()
 
 	def is_in(self, item):
+		""" Checks whether an element is in the Merkle Tree. """
 		if self.head == None:
 			return False
 
 		key = h(item)
 		head_element = self.store[self.head]
 		return head_element.is_in(self.store, key)
+
+import redis
+import msgpack
+
+
+def default(obj):
+	""" Serialize objects using msgpack. """
+	if isinstance(obj, Leaf):
+		return msgpack.ExtType(42, obj.item)
+	if isinstance(obj, Branch):
+		datab = msgpack.packb((obj.pivot, obj.left_branch, obj.right_branch))
+		return msgpack.ExtType(43,  datab)
+
+	raise TypeError("Unknown Type: %r" % (obj,))
+
+
+def ext_hook(code, data):
+	""" Deserialize objects using msgpack. """
+	if code == 42:
+		return Leaf(data) 
+	if code == 43:
+		piv, r_leaf, l_leaf = msgpack.unpackb(data)
+		return Branch(piv, r_leaf, l_leaf)
+
+	return ExtType(code, data)
+
+
+class RegisStore():
+	def __init__(self):
+		self.r = redis.StrictRedis(host="localhost", port=6379, db=0)
+
+	def __getitem__(self, key):
+		bdata = self.r.get(key)
+		branch = msgpack.unpackb(bdata, ext_hook=ext_hook)
+		assert key == branch.identity()
+		return branch
+
+	def __setitem__(self, key, value):
+		bdata = msgpack.packb(value, default=default)
+		assert key == value.identity()
+		self.r.set(key, bdata)
+
+def _flushDB():
+    r = redis.StrictRedis(host='localhost', port=6379, db=0)
+    r.flushdb()
+
+def test_store():
+	_flushDB()
+
+	r = RegisStore()
+
+	l = Leaf("Hello")
+	r[l.identity()] = l
+	assert r[l.identity()].identity() == l.identity()
+
+def test_store_tree():
+	_flushDB()
+
+	r = RegisStore()
+	t = Tree(store = r)	
+
+	from os import urandom
+	for _ in range(100):
+		item = urandom(32)
+		t.add(item)
+		assert t.is_in(item)
+		assert not t.is_in(urandom(32))
+
 
 
 ## ============== TESTS ===================
@@ -190,8 +271,5 @@ def test_massive():
 		assert t.is_in(item)
 		assert not t.is_in(urandom(32))
 
-		from binascii import hexlify
-	print 
-	print hexlify(t.head)
 
 
