@@ -15,6 +15,10 @@ def test_evidence():
 	E = t.evidence("World")
 	assert len(E) == 2
 
+	store = dict((e.identity, e) for e in E)
+	t2 = Tree(store, E[0].identity())
+	assert t2.is_in("World")
+
 def _flushDB():
     r = redis.StrictRedis(host='localhost', port=6379, db=0)
     r.flushdb()
