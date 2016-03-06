@@ -6,13 +6,6 @@
 The hippiehug Merkle Tree Library
 =================================
  
-Contents:
-
-.. toctree::
-   :maxdepth: 2
-
-   index
-
 Installation
 ------------
 
