@@ -12,11 +12,11 @@ def test_evidence():
 	t.add("Hello")
 	t.add("World")
 
-	E = t.evidence("World")
+	root, E = t.evidence("World")
 	assert len(E) == 2
 
 	store = dict((e.identity(), e) for e in E)
-	t2 = Tree(store, E[0].identity())
+	t2 = Tree(store, root)
 	assert t2.is_in("World")
 
 def _flushDB():
@@ -111,6 +111,9 @@ def test_add_isin():
 	# Test positive case
 	t.add("Hello")
 	assert t.is_in("Hello") == True
+
+	# Infix operator
+	assert "Hello" in t
 
 def test_fail_isin():
 	t = Tree()

@@ -8,10 +8,16 @@ from paver.easy import sh, needs, pushd
 from paver.virtual import *
 
 @task
+def docs(quiet=False):
+    """ Build the documentation. """
+    sh('cd docs; make html')
+
+
+@task
 def test():
     """ Run all the unit tests in a generic py.test context. """
     print("Generic Unit tests")
-    sh('py.test -vs --doctest-modules tests/test_*.py')
+    sh('py.test -vs --doctest-modules tests/test_*.py hippiehug/*.py')
 
 @task
 def build(quiet=True):
@@ -28,8 +34,7 @@ def win(quiet=True):
 @task
 def upload(quiet=False):
     """ Uploads the latest distribution to pypi. """
-    pass
-
+    
     lib = file(os.path.join("hippiehug", "__init__.py")).read()
     v = re.findall("VERSION.*=.*['\"](.*)['\"]", lib)[0]
 
