@@ -22,6 +22,7 @@ class Leaf:
         return self.hid
 
     def add(self, store, item):
+
         # Make a new leaf & store in DB
         l = Leaf(item)
         leaf_id = l.identity()
@@ -39,6 +40,23 @@ class Leaf:
 
         store[b.identity()] = b
         return b
+
+    def multi_add(self, store, items):
+        if items == []:
+            return self
+
+        # Add the first element to the store
+        i = items[0]
+        b = self.add(store, i)
+
+        # Skip if there is nothing left
+        rest = items[1:]
+        if rest == []:
+            return b
+
+        # Add the rest
+        return b.multi_add(store, rest)
+
 
     def is_in(self, store, item):
         return item == self.item
@@ -85,6 +103,31 @@ class Branch:
             new_b_right = b_right.add(store, item)
             b = Branch(self.pivot, self.left_branch, new_b_right.identity())
 
+        store[b.identity()] = b
+        return b
+
+    def multi_add(self, store, items):
+        if items == []:
+            return self
+
+        left_list = [i for i in items if i <= self.pivot]
+        right_list = [i for i in items if i > self.pivot]
+
+        b_left = store[self.left_branch]
+        if left_list != []:
+            _check_hash(self.left_branch, b_left)
+            new_b_left = b_left.multi_add(store, left_list)
+        else:
+            new_b_left = b_left
+
+        b_right = store[self.right_branch]
+        if right_list != []:
+            _check_hash(self.right_branch, b_right)
+            new_b_right = b_right.multi_add(store, right_list)
+        else:
+            new_b_right = b_right
+
+        b = Branch(self.pivot, new_b_left.identity(), new_b_right.identity())
         store[b.identity()] = b
         return b
 
@@ -153,7 +196,24 @@ class Tree:
             head_element = self.store[self.head]
             new_head_elem = head_element.add(self.store, key)
             self.head = new_head_elem.identity()
-        
+    
+    def multi_add(self, items):
+        """ Add many elements to the Merkle tree. This is 
+        more efficient than adding individual elements."""
+        keys = [h(i) for i in items]
+
+        if self.head == None:
+            l = Leaf(keys[0])
+            self.store[l.identity()] = l
+
+            b = l.multi_add(self.store, keys[1:])
+            self.head = b.identity()
+
+        else:
+            head_element = self.store[self.head]
+            new_head_elem = head_element.multi_add(self.store, keys)
+            self.head = new_head_elem.identity()
+
 
     def is_in(self, item):
         """ Checks whether an element is in the Merkle Tree. """

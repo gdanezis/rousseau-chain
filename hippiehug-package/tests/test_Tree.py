@@ -58,7 +58,16 @@ def test_Branch_isin():
 	b = l.add(store, "World")
 	assert b.is_in(store, "Hello")
 	assert b.is_in(store, "World")
-		
+
+def test_Branch_multi():
+	l = Leaf("Hello")
+	store = {l.identity() : l}
+	b = l.multi_add(store, ["B", "C"])
+	b.check(store)
+
+	assert b.is_in(store, "B")
+	assert b.is_in(store, "C")
+	assert b.is_in(store, "Hello")
 
 def test_Branch_add():
 	l = Leaf("Hello")
@@ -131,5 +140,35 @@ def test_massive():
 		assert t.is_in(item)
 		assert not t.is_in(urandom(32))
 
+def test_multi_add():
+	t = Tree()	
+
+	from os import urandom
+	X = [urandom(32) for _ in range(100)]
+	t.multi_add(X)
+
+	for x in X:
+		assert x in t
+
+	X = [urandom(32) for _ in range(100)]
+	t.multi_add(X)
+
+	for x in X:
+		assert x in t
+
+	Y = [urandom(32) for _ in range(100)]
+	for y in Y:
+		assert y not in t
+
+def test_multi_small():
+	t = Tree()	
+
+	t.multi_add(["Hello", "World"])
+	assert "Hello" in t		
+	assert "World" in t
+
+	t.multi_add(["A", "B", "C", "D", "E", "F"])
+	assert "E" in t		
+	assert "F" in t
 
 
