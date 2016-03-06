@@ -9,7 +9,7 @@ The hippiehug Merkle Tree Library
 Installation
 ------------
 
-The hippiehug Merkle Tree is a pyre python library, available through the usual pypi repositories. You can install it using ``pip``:
+The hippiehug Merkle Tree is a pure python library, available through the usual pypi repositories. You can install it using ``pip``:
 
 .. code-block:: none
 
@@ -44,6 +44,12 @@ A number of stores can be used to back the state of the tree. Those can be local
    :language: python
    :lines: 24-29
 
+Security Properties
+-------------------
+
+The key security property offered by the hippiehug Tree relates to *high-integrity*, despite a possibly adversarial store. Given the root value of the tree is kept with high-integrity, the integrity of the addition (``add``) and set membership (``is_in``) operations, are guaranteed to be correct if they return a result. 
+
+However, *availability* properties are not guaranteed: a store that does not respond, loses or modifies data can make operations fail. Replicating the store across different parties can mitigate this.
 
 The Merkle Tree Classes
 -----------------------

@@ -133,6 +133,11 @@ class Tree:
         self.head = root_hash
         self.store = store  ## This is our remote (key -> value) store
 
+    def root(self):
+        """ Returns the root of the Tree. Keep this value safe, and the integrity 
+        of the set is guaranteed. """
+        return self.head
+
     def add(self, item):
         """ Add and element to the Merkle tree. """
         key = h(item)

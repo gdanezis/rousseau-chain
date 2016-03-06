@@ -12,6 +12,7 @@ def test_evidence():
     t.add("World")
 
     root, E = t.evidence("World")
+    assert root == t.root()
     store = dict((e.identity(), e) for e in E)
     t2 = Tree(store, root)
     assert "World" in t2
