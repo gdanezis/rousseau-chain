@@ -236,7 +236,7 @@ class RedisStore():
 
         bdata = self.r.get(key)
         branch = msgpack.unpackb(bdata, ext_hook=ext_hook)
-        assert key == branch.identity()
+        # assert key == branch.identity()
         self.cache[key] = branch
         return branch
 
@@ -245,6 +245,6 @@ class RedisStore():
             return
 
         bdata = msgpack.packb(value, default=default)
-        assert key == value.identity()
+        # assert key == value.identity()
         self.r.set(key, bdata)
 
