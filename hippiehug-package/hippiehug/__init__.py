@@ -153,10 +153,11 @@ class Tree:
 		return head_element.evidence(self.store, [], key)
 
 
-
-import redis
-import msgpack
-
+try:
+	import redis
+	import msgpack
+except:
+	print("Cannot load redis or msgpack")
 
 def default(obj):
 	""" Serialize objects using msgpack. """
