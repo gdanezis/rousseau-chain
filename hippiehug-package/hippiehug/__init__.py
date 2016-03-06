@@ -9,15 +9,17 @@ def h(item):
 
 class Leaf:
 
-    __slots__ = ["item"]
+    __slots__ = ["item", "hid"]
 
     def __init__(self, item):
         self.item = item
         """ The item stored in the Leaf. """
 
+        self.hid = h("L"+self.item)
+
     def identity(self):
         """ Returns the hash ID of the Leaf. """
-        return h("L"+self.item)
+        return self.hid
 
     def add(self, store, item):
         # Make a new leaf & store in DB
@@ -50,7 +52,7 @@ def _check_hash(key, val):
 
 class Branch:
 
-    __slots__ = ["pivot", "left_branch", "right_branch"]
+    __slots__ = ["pivot", "left_branch", "right_branch", "hid"]
 
     def __init__(self, pivot, left_branch_id, right_branch_id):
         self.pivot = pivot
@@ -62,9 +64,11 @@ class Branch:
         self.right_branch = right_branch_id
         "The hash ID of the right leaf."
 
+        self.hid = h("B" + self.pivot + self.left_branch + self.right_branch)
+
     def identity(self):
         """ Returns the hash ID of the Branch. """
-        return h("B" + self.pivot + self.left_branch + self.right_branch)
+        return self.hid
 
     def add(self, store, item):
         if item <= self.pivot:
