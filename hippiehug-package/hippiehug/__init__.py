@@ -13,8 +13,10 @@ class Leaf:
 
 	def __init__(self, item):
 		self.item = item
+		""" The item stored in the Leaf. """
 
 	def identity(self):
+		""" Returns the hash ID of the Leaf. """
 		return h("L"+self.item)
 
 	def add(self, store, item):
@@ -52,10 +54,16 @@ class Branch:
 
 	def __init__(self, pivot, left_branch_id, right_branch_id):
 		self.pivot = pivot
+		"The pivot element which determines the left and right leafs."
+
 		self.left_branch = left_branch_id
+		"The hash ID of the left leaf."
+
 		self.right_branch = right_branch_id
+		"The hash ID of the right leaf."
 
 	def identity(self):
+		""" Returns the hash ID of the Branch. """
 		return h("B" + self.pivot + self.left_branch + self.right_branch)
 
 	def add(self, store, item):
