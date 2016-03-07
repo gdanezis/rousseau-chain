@@ -261,7 +261,22 @@ class Tree:
 
     def multi_is_in(self, items, evidence = False):
         """ Checks whether the items are in the Tree. Optionally, returns the 
-        current head of the Tree and a list of Branches and Leafs as evidence. """
+        current head of the Tree and a list of Branches and Leafs as evidence. 
+
+        Example lookup:
+            >>> t = Tree()
+            >>> t.multi_add(["Hello", "World"])
+            >>> t.multi_is_in(["Hello", "World", "!"])
+            [True, True, False]
+
+        Example gathering of evidence:
+            >>> _, head, bag = t.multi_is_in(["Hello", "World", "!"], True)
+            >>> new_store = dict((e.identity(), e) for e in bag)
+            >>> new_t = Tree(new_store, head)
+            >>> new_t.multi_is_in(["Hello", "World", "!"])
+            [True, True, False]
+
+        """
 
         if self.head == None:
             if not evidence:
