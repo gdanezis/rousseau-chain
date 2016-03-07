@@ -202,9 +202,9 @@ class Tree:
         more efficient than adding individual elements.
 
             Example:
-            >>> t = Tree()
-            >>> t.multi_add(["Hello", "World"])
-            >>> assert "Hello" in t and "World" in t
+                >>> t = Tree()
+                >>> t.multi_add(["Hello", "World"])
+                >>> assert "Hello" in t and "World" in t
 
         """
         keys = [h(i) for i in items]
