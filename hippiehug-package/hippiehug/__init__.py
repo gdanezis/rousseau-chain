@@ -65,7 +65,8 @@ class Leaf:
         if items == []:
             return
 
-        evidence.append( self )
+        if evidence is not None:
+            evidence.append( self )
 
         for i in items:
             solution[i] = (i == self.item)
@@ -150,7 +151,8 @@ class Branch:
         if items == []:
             return
 
-        evidence.append( self )
+        if evidence is not None:
+            evidence.append( self )
 
         left_list = [i for i in items if i <= self.pivot]
         right_list = [i for i in items if i > self.pivot]
@@ -287,7 +289,8 @@ class Tree:
         keys = [ h(i) for i in items ]
         head_element = self.store[self.head]
                 
-        evid = []
+        evid = [] if evidence else None
+
         solution = {}
         head_element.multi_is_in( self.store, evid, keys, solution)
 
