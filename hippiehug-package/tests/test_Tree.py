@@ -171,4 +171,19 @@ def test_multi_small():
 	assert "E" in t		
 	assert "F" in t
 
+def test_multi_test():
+	t = Tree()	
+
+	t.multi_add(["Hello", "World"])
+	assert t.multi_is_in(["Hello", "World"]) == [True, True]
+
+	answer, head, evidence = t.multi_is_in(["Hello", "World"], True)
+	assert answer == [True, True]
+
+	e = dict((k.identity(), k) for k in evidence)
+	t2 = Tree(e, head)
+	assert t2.multi_is_in(["Hello", "World"]) == [True, True]
+
+
+
 

@@ -61,6 +61,15 @@ class Leaf:
     def is_in(self, store, item):
         return item == self.item
 
+    def multi_is_in(self, store, evidence, items, solution={}):
+        if items == []:
+            return
+
+        evidence.append( self )
+
+        for i in items:
+            solution[i] = (i == self.item)
+
     def evidence(self, store, evidence, item):
         return evidence + [ self ]
 
@@ -136,6 +145,25 @@ class Branch:
             return store[self.left_branch].is_in(store, item)
         else:   
             return store[self.right_branch].is_in(store, item)
+
+    def multi_is_in(self, store, evidence, items, solution={}):
+        if items == []:
+            return
+
+        evidence.append( self )
+
+        left_list = [i for i in items if i <= self.pivot]
+        right_list = [i for i in items if i > self.pivot]
+
+        b_left = store[self.left_branch]
+        if left_list != []:
+            _check_hash(self.left_branch, b_left)
+            b_left.multi_is_in(store, evidence, left_list, solution)
+
+        b_right = store[self.right_branch]
+        if right_list != []:
+            _check_hash(self.right_branch, b_right)
+            b_right.multi_is_in(store, evidence, right_list, solution)
 
 
     def evidence(self, store, evidence, item):
@@ -230,6 +258,28 @@ class Tree:
         key = h(item)
         head_element = self.store[self.head]
         return head_element.is_in(self.store, key)
+
+    def multi_is_in(self, items, evidence = False):
+        """ Checks whether the items are in the Tree. Optionally, returns the 
+        current head of the Tree and a list of Branches and Leafs as evidence. """
+
+        if self.head == None:
+            if not evidence:
+                return [ False ] * len(items)
+            else:
+                return [ False ] * len(items), None, []
+
+        keys = [ h(i) for i in items ]
+        head_element = self.store[self.head]
+                
+        evid = []
+        solution = {}
+        head_element.multi_is_in( self.store, evid, keys, solution)
+
+        if not evidence:
+            return [solution[i] for i in keys]
+        else:
+            return [solution[i] for i in keys], self.head, evid
 
     def __contains__(self, item):
         return self.is_in(item)
