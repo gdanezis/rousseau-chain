@@ -201,10 +201,10 @@ class Tree:
         """ Add many elements to the Merkle tree. This is 
         more efficient than adding individual elements.
 
-            Example:
-                >>> t = Tree()
-                >>> t.multi_add(["Hello", "World"])
-                >>> assert "Hello" in t and "World" in t
+        Example:
+            >>> t = Tree()
+            >>> t.multi_add(["Hello", "World"])
+            >>> assert "Hello" in t and "World" in t
 
         """
         keys = [h(i) for i in items]
