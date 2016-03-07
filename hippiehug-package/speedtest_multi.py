@@ -18,17 +18,22 @@ def main():
 	t = Tree()	
 
 	from os import urandom
-	X = [str(x) for x in range(1000000)]
+	rep = 100000
+	print("For %s repetitions:" % rep)
+	X = [str(x) for x in xrange(rep)]
+	bulk = ["x" + str(x) for x in xrange(rep)]
+	t.multi_add(bulk)
+
 
 	with Timer() as tim:
 		t.multi_add(X)
 
-	print "Time per add: %.4f ms (total: %.2f sec)" % (tim.interval * 1000 / 1000000.0, tim.interval)
+	print "Time per add: %.4f ms (total: %.2f sec)" % (tim.interval * 1000 / float(rep), tim.interval)
 
 	with Timer() as tim:
 		t.multi_is_in(X)
 
-	print "Time per check: %.4f ms (total: %.2f sec)" % (tim.interval * 1000 / 1000000.0, tim.interval)
+	print "Time per check: %.4f ms (total: %.2f sec)" % (tim.interval * 1000 / float(rep), tim.interval)
 
 if __name__ == "__main__":
 	import sys
@@ -36,7 +41,7 @@ if __name__ == "__main__":
 	if "-P" in sys.argv:
 		pr = cProfile.Profile()
 		pr.enable()
-	
+
 	main()
 
 	if "-P" in sys.argv:
@@ -45,7 +50,7 @@ if __name__ == "__main__":
 		s = StringIO.StringIO()
 		sortby = 'tottime'
 		ps = pstats.Stats(pr, stream=s)
-		ps.sort_stats(sortby)
 		ps.strip_dirs()
+		ps.sort_stats(sortby)
 		ps.print_stats()
 		print s.getvalue()

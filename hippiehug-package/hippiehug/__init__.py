@@ -25,7 +25,7 @@ class Leaf:
 
         # Make a new leaf & store in DB
         l = Leaf(item)
-        leaf_id = l.identity()
+        leaf_id = l.hid # l.identity()
         store[leaf_id] = l
 
         # Only add once
@@ -34,11 +34,14 @@ class Leaf:
 
         # Add the new branch
         if self.item < item:
-            b = Branch(self.item, self.identity(), leaf_id)
+            # b = Branch(self.item, self.identity(), leaf_id)
+            b = Branch(self.item, self.hid, leaf_id)
         else:
-            b = Branch(item, leaf_id, self.identity())
+            # b = Branch(item, leaf_id, self.identity())
+            b = Branch(item, leaf_id, self.hid)
 
-        store[b.identity()] = b
+        # store[b.identity()] = b
+        store[b.hid] = b
         return b
 
     def multi_add(self, store, items):
@@ -75,7 +78,7 @@ class Leaf:
         return evidence + [ self ]
 
 def _check_hash(key, val):
-    if key != val.identity():
+    if key != val.hid: # val.identity():
         raise Exception("Value has the wrong hash.")
 
 class Branch:
@@ -113,7 +116,8 @@ class Branch:
             new_b_right = b_right.add(store, item)
             b = Branch(self.pivot, self.left_branch, new_b_right.identity())
 
-        store[b.identity()] = b
+        # store[b.identity()] = b
+        store[b.hid] = b
         return b
 
     def multi_add(self, store, items):
@@ -137,8 +141,10 @@ class Branch:
         else:
             new_b_right = b_right
 
-        b = Branch(self.pivot, new_b_left.identity(), new_b_right.identity())
-        store[b.identity()] = b
+        # b = Branch(self.pivot, new_b_left.identity(), new_b_right.identity())
+        b = Branch(self.pivot, new_b_left.hid, new_b_right.hid)
+        # store[b.identity()] = b
+        store[b.hid] = b
         return b
 
     def is_in(self, store, item):
@@ -167,6 +173,36 @@ class Branch:
             _check_hash(self.right_branch, b_right)
             b_right.multi_is_in(store, evidence, right_list, solution)
 
+    def multi_is_in_fast(self, store, evidence, items, solution={}):
+        if items == []:
+            return
+
+        work_list = [(self, items)]
+
+        while work_list != []:
+
+            (work_node, work_items) = work_list.pop()
+
+            if evidence is not None:
+                evidence.append( work_node )
+
+            if isinstance(work_node, Leaf):
+                for i in work_items:
+                    solution[i] = (i == work_node.item)
+            else:
+
+                left_list = [i for i in work_items if i <= work_node.pivot]
+                right_list = [i for i in work_items if i > work_node.pivot]
+
+                b_left = store[work_node.left_branch]
+                if left_list != []:
+                    _check_hash(work_node.left_branch, b_left)
+                    work_list.append( (b_left, left_list) )
+                    
+                b_right = store[work_node.right_branch]
+                if right_list != []:
+                    _check_hash(work_node.right_branch, b_right)
+                    work_list.append( (b_right, right_list) )
 
     def evidence(self, store, evidence, item):
         evidence = evidence + [ self ]
@@ -292,7 +328,7 @@ class Tree:
         evid = [] if evidence else None
 
         solution = {}
-        head_element.multi_is_in( self.store, evid, keys, solution)
+        head_element.multi_is_in_fast( self.store, evid, keys, solution)
 
         if not evidence:
             return [solution[i] for i in keys]
