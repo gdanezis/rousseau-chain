@@ -71,6 +71,23 @@ Backend Storage Drivers
    :members: 
    :special-members: __init__
 
+Development and How to Contribute?
+----------------------------------
+
+The development of ``hippiehug`` takes place on github_. Please send patches and bug fixes through pull requests. You can clone the repository, and test the package, through the following commands:
+
+.. code-block:: none
+
+  git clone https://github.com/gdanezis/rousseau-chain.git
+  cd hippiehug-package
+  paver test
+
+Other targets for paver include ``docs`` to build documentation, and ``build`` to build the package ready for pip installation or distribution.
+
+.. _github: https://github.com/gdanezis/rousseau-chain
+
+
+
 Indices and tables
 ------------------
 
