@@ -1,11 +1,11 @@
 
 VERSION = "0.0.2"
 
-from hashlib import sha256
+from hashlib import sha256 as xhash
 
 def h(item):
     ''' Returns the hash of an item. '''
-    return sha256(item).digest()
+    return xhash(item).digest()
 
 class Leaf:
 
