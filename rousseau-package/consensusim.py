@@ -43,10 +43,11 @@ class Node:
 		deps = set(deps)
 		new_obj = set(new_obj) # By construction no repeats & fresh names
 
-		# Do not process twice
 		if (idx in self.commit_yes or idx in self.commit_no):
+			# Do not process twice
 			print "Pass already decided"
 			return False # No further progress can be made
+
 		else:
 			if deps & self.commit_used != set():
 				
@@ -79,7 +80,7 @@ class Node:
 					self.pending_used |= set((d, idx) for d in deps)
 					
 					# TODO: add new transactions to available here
-					# Hm, actually we should not until it is confirmed.
+					#       Hm, actually we should not until it is confirmed.
 					# self.pending_available |= new_obj ## Add new transactions here
 
 					print "Pending yes"
@@ -89,6 +90,7 @@ class Node:
 					# We cast a 'no' vote since there is a conflict in our
 					# history of transactions.
 					self.pending_vote[idx].add( (self.name, False) )
+
 					print "Pending no"
 					return True
 			else:
