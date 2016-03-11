@@ -44,6 +44,8 @@ def main():
             seq = c.add(obj)
             producer.send_messages(b'rousseau', dumps([obj, seq, hexlify(c.head())]) )
 
+            ## Commit to DB the chain.
+
     # The consistency engine
     n = RousseauNode()
 
@@ -57,6 +59,10 @@ def main():
 
         try:
             idx, deps, new_objs = loads(message.value)
+
+            ## 1) Custom checker.
+            ## 2) Store into DB.
+
             print("ID: %s Deps: %s New: %s" % (idx, str(deps), str(new_objs)))
 
             n.process((idx, deps, new_objs))
