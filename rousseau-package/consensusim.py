@@ -6,9 +6,9 @@ from binascii import hexlify
 from collections import defaultdict, Counter
 
 class Node:
-	def __init__(self, start = [], quorum=1):
+	def __init__(self, start = [], quorum=1, name = None):
 		self.quorum = quorum
-		self.name = urandom(16)
+		self.name = name if name is not None else urandom(16)
 		self.pending_vote = defaultdict(set)
 		#self.pending_no  = defaultdict(set)
 
@@ -31,6 +31,13 @@ class Node:
 
 		# other_node.commit_available |= self.commit_available
 		other_node.commit_used |= self.commit_used
+
+
+	def on_vote(self, vote):
+		pass
+
+	def on_commit(self, tx, yesno):
+		pass
 
 	def process(self, Tx):
 		print Tx[0]
@@ -55,6 +62,8 @@ class Node:
 				# So there is no way we will ever accept this
 				# and neither will anyone else
 				self.commit_no.add(idx)
+				self.on_commit( idx, False )
+				
 				print "Add to no"
 				return False # there is no further work on this.
 
@@ -70,7 +79,8 @@ class Node:
 				# depends on, so we can vote.
 
 				# Make a list of used transactions:
-				used = {xd for xd, xtx in self.pending_used if xtx not in self.commit_no}
+				used = {xd for xd, xtx in self.pending_used if xtx not in self.commit_no and xd not in self.commit_used}
+				## CHECK CORRECTNESS: Do we update on things that are eventually used?
 
 				if set(deps) & used == set() :
 					# We cast a 'yes' vote -- since it seems that there
@@ -79,6 +89,8 @@ class Node:
 					self.pending_vote[idx].add( (self.name,True) )
 					self.pending_used |= set((d, idx) for d in deps)
 					
+					self.on_vote( (self.name,True) )
+
 					# TODO: add new transactions to available here
 					#       Hm, actually we should not until it is confirmed.
 					# self.pending_available |= new_obj ## Add new transactions here
@@ -90,6 +102,8 @@ class Node:
 					# We cast a 'no' vote since there is a conflict in our
 					# history of transactions.
 					self.pending_vote[idx].add( (self.name, False) )
+
+					self.on_vote( (self.name, False) )
 
 					print "Pending no"
 					return True
@@ -105,6 +119,11 @@ class Node:
 			self.commit_yes.add(idx)
 			self.pending_available |= new_obj ## Add new transactions here
 			self.commit_used |= set(deps)
+
+			self.on_commit( idx, True )
+
+			## CHECK CORRECT: Should I add the used transactions to self.pending_used?
+
 			print "Commit yes"
 			return False
 
@@ -113,6 +132,9 @@ class Node:
 			# so we will now add it to the 'no' bucket.
 			# Optional TODO: invalidate in the pending lists 
 			self.commit_no.add(idx)
+
+			self.on_commit( idx, False )
+
 			print "Commit no"
 			return False
 
