@@ -1,5 +1,8 @@
 # This is a convergence simulation for gossip based consensus.
 
+import json
+import time
+
 from os import urandom
 from random import sample, shuffle
 from binascii import hexlify
@@ -40,6 +43,8 @@ class Node:
 		# self.commit_available = set(start)
 		self.commit_used = set()
 
+		self.quiet = False
+
 	def gossip_towards(self, other_node):
 		for k, v in self.pending_vote.iteritems():
 			other_node.pending_vote[k] |= v
@@ -60,7 +65,8 @@ class Node:
 		pass
 
 	def process(self, Tx):
-		print Tx[0]
+		if not self.quiet:
+			print Tx[0]
 		x = True
 		while(x):
 			x = self._process(Tx)
@@ -72,7 +78,8 @@ class Node:
 
 		if (idx in self.commit_yes or idx in self.commit_no):
 			# Do not process twice
-			print "Pass already decided"
+			if not self.quiet:
+				print "Pass already decided"
 			return False # No further progress can be made
 
 		else:
@@ -84,7 +91,8 @@ class Node:
 				self.commit_no.add(idx)
 				self.on_commit( idx, False )
 
-				print "Add to no"
+				if not self.quiet:
+					print "Add to no"
 				return False # there is no further work on this.
 
 			# If we cannot exclude it out of hand then we kick in
@@ -115,7 +123,8 @@ class Node:
 					#       Hm, actually we should not until it is confirmed.
 					# self.pending_available |= new_obj ## Add new transactions here
 
-					print "Pending yes"
+					if not self.quiet:
+						print "Pending yes"
 					return True
 
 				else:
@@ -125,10 +134,12 @@ class Node:
 
 					self.on_vote( (self.name, False) )
 
-					print "Pending no"
+					if not self.quiet:
+						print "Pending no"
 					return True
 			else:
-				print "We know nothing about prerequisites. Continue ..."
+				if not self.quiet:
+					print "We know nothing about prerequisites. Continue ..."
 				# We continue in case voting helps move things. This
 				# happens in case others know about this transaction.
 
@@ -143,8 +154,8 @@ class Node:
 			self.on_commit( idx, True )
 
 			## CHECK CORRECT: Should I add the used transactions to self.pending_used?
-
-			print "Commit yes"
+			if not self.quiet:
+				print "Commit yes"
 			return False
 
 		if Counter(x for _,x in self.pending_vote[idx])[False] >= self.quorum:
@@ -154,8 +165,8 @@ class Node:
 			self.commit_no.add(idx)
 
 			self.on_commit( idx, False )
-
-			print "Commit no"
+			if not self.quiet:
+				print "Commit no"
 			return False
 
 		return False # No further work
@@ -176,13 +187,21 @@ def test_random():
 	for tx in transactions:
 		n2.process(tx)
 
-def test_wellformed():
-	import json
+class Timer:    
+    def __enter__(self):
+        self.start = time.clock()
+        return self
 
-	resources = [hexlify(urandom(16)) for _ in range(300)]
+    def __exit__(self, *args):
+        self.end = time.clock()
+        self.interval = self.end - self.start
+
+def test_wellformed():
+
+	resources = [hexlify(urandom(16)) for _ in range(1000)]
 	# def packageTx(data, deps, num_out)
 	transactions = []
-	for x in range(300):
+	for x in range(1000):
 		deps = sample(resources,2)
 		data = json.dumps({"ID":x})
 		tx = packageTx(data, deps, 2)
@@ -190,21 +209,24 @@ def test_wellformed():
 	# [(hexlify(urandom(16)), sample(resources,2), []) for x in range(300)]
 
 	n = Node(resources, 1)
+	n.quiet = True
 	shuffle(transactions)
-	tx_list = sample(transactions, 100)
-	for tx, data in transactions:
-		idx, deps, out = tx
+	# tx_list = sample(transactions, 100)
 
-		## First perform the Tx checks
-		assert packageTx(data, deps, 2) == tx
+	with Timer() as t:
+		for tx, data in transactions:
+			idx, deps, out = tx
 
-		## Now process this transaction
-		n.process(tx)
-		
-		for i, o in enumerate(out):
-			print "Out%s: %s" % (i, o)
+			## First perform the Tx checks
+			assert packageTx(data, deps, 2) == tx
 
+			## Now process this transaction
+			n.process(tx)
+			
+			# for i, o in enumerate(out):
+			#  	print "Out%s: %s" % (i, o)
 
+	print "Time taken: %2.2f sec" % (t.interval) 
 
 def test_small():
 	T1 = ("T1", ["A", "B"], [])
