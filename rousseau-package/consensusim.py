@@ -193,8 +193,14 @@ def test_wellformed():
 	shuffle(transactions)
 	tx_list = sample(transactions, 100)
 	for tx, data in transactions:
+		idx, deps, out = tx
+
+		## First perform the Tx checks
+		assert packageTx(data, deps, 2) == tx
+
+		## Now process this transaction
 		n.process(tx)
-		_,_, out = tx
+		
 		for i, o in enumerate(out):
 			print "Out%s: %s" % (i, o)
 
