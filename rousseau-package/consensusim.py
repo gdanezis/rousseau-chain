@@ -107,10 +107,11 @@ class Node:
 				# depends on, so we can vote.
 
 				# Make a list of used transactions:
-				used = {xd for xd, xtx in self.pending_used if xtx not in self.commit_no and xd not in self.commit_used}
+				used = { xd for xd, xtx in self.pending_used if xtx not in self.commit_no} 
+				# and xd not in self.commit_used }
 				## CHECK CORRECTNESS: Do we update on things that are eventually used?
 
-				if set(deps) & used == set() :
+				if set(deps) & used == set() and set(deps) & self.commit_used == set():
 					# We cast a 'yes' vote -- since it seems that there
 					# are no conflicts for this transaction in our pending list.
 
@@ -197,7 +198,6 @@ class Timer:
         self.interval = self.end - self.start
 
 def test_wellformed():
-
 	resources = [hexlify(urandom(16)) for _ in range(1000)]
 	# def packageTx(data, deps, num_out)
 	transactions = []
@@ -223,9 +223,6 @@ def test_wellformed():
 			## Now process this transaction
 			n.process(tx)
 			
-			# for i, o in enumerate(out):
-			#  	print "Out%s: %s" % (i, o)
-
 	print "Time taken: %2.2f sec" % (t.interval) 
 
 def test_small():
