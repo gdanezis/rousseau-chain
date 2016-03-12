@@ -5,6 +5,26 @@ from random import sample, shuffle
 from binascii import hexlify
 from collections import defaultdict, Counter
 
+from hashlib import sha256
+from struct import pack
+
+def h(data):
+	return hexlify(sha256(data).digest())
+
+def packageTx(data, deps, num_out):
+	hx = sha256(data)
+	for d in sorted(deps):
+		hx.update(d)
+
+	actualID = hx.digest()
+	actualID = actualID[:-2] + pack("H", 0)
+
+	out = []
+	for i in range(num_out):
+		out.append(actualID[:-2] + pack("H", i+1))
+
+	return (hexlify(actualID), sorted(deps), map(hexlify,out))
+
 class Node:
 	def __init__(self, start = [], quorum=1, name = None):
 		self.quorum = quorum
@@ -63,7 +83,7 @@ class Node:
 				# and neither will anyone else
 				self.commit_no.add(idx)
 				self.on_commit( idx, False )
-				
+
 				print "Add to no"
 				return False # there is no further work on this.
 
@@ -155,6 +175,30 @@ def test_random():
 	n.gossip_towards(n2)
 	for tx in transactions:
 		n2.process(tx)
+
+def test_wellformed():
+	import json
+
+	resources = [hexlify(urandom(16)) for _ in range(300)]
+	# def packageTx(data, deps, num_out)
+	transactions = []
+	for x in range(300):
+		deps = sample(resources,2)
+		data = json.dumps({"ID":x})
+		tx = packageTx(data, deps, 2)
+		transactions.append((tx, data))
+	# [(hexlify(urandom(16)), sample(resources,2), []) for x in range(300)]
+
+	n = Node(resources, 1)
+	shuffle(transactions)
+	tx_list = sample(transactions, 100)
+	for tx, data in transactions:
+		n.process(tx)
+		_,_, out = tx
+		for i, o in enumerate(out):
+			print "Out%s: %s" % (i, o)
+
+
 
 def test_small():
 	T1 = ("T1", ["A", "B"], [])
