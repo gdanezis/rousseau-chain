@@ -30,6 +30,8 @@ def packageTx(data, deps, num_out):
 
 class Node:
 	def __init__(self, start = [], quorum=1, name = None, shard=None):
+		self.transactions = {}
+
 		self.quorum = quorum
 		self.name = name if name is not None else urandom(16)
 		self.pending_vote = defaultdict(set)
@@ -70,6 +72,8 @@ class Node:
 		pass
 
 	def process(self, Tx):
+		self.transactions[Tx[0]] = Tx
+
 		if not self.quiet:
 			print Tx[0]
 		x = True
@@ -152,39 +156,43 @@ class Node:
 				# We continue in case voting helps move things. This
 				# happens in case others know about this transaction.
 
-		Votes = Counter()
-		for oname, odeps, ovote in self.pending_vote[idx]:
-			for d in odeps:
-				Votes.update( [(d, ovote)] )
+		if self.shard[0] <= idx < self.shard[1] or deps != set():
+			# Only process the final votes if we are in charde of this
+			# shard for the transaction or any dependencies.
 
-		yes_vote = all( Votes[(d, True)] >= self.quorum for d in all_deps )
-		no_vote = any( Votes[(d, False)] >= self.quorum for d in all_deps )
+			Votes = Counter()
+			for oname, odeps, ovote in self.pending_vote[idx]:
+				for d in odeps:
+					Votes.update( [(d, ovote)] )
 
-		## Time to count votes for this transaction
-		if yes_vote: # Counter(x for _,x in self.pending_vote[idx])[True] >= self.quorum:
-			# We have a Quorum for including the transaction. So we update
-			# all the committed state monotonically.
-			self.commit_yes.add(idx)
-			self.pending_available |= new_obj ## Add new transactions here
-			self.commit_used |= set(deps)
+			yes_vote = all( Votes[(d, True)] >= self.quorum for d in all_deps )
+			no_vote = any( Votes[(d, False)] >= self.quorum for d in all_deps )
 
-			self.on_commit( idx, True )
+			## Time to count votes for this transaction
+			if yes_vote: # Counter(x for _,x in self.pending_vote[idx])[True] >= self.quorum:
+				# We have a Quorum for including the transaction. So we update
+				# all the committed state monotonically.
+				self.commit_yes.add(idx)
+				self.pending_available |= new_obj ## Add new transactions here
+				self.commit_used |= set(deps)
 
-			## CHECK CORRECT: Should I add the used transactions to self.pending_used?
-			if not self.quiet:
-				print "Commit yes"
-			return False
+				self.on_commit( idx, True )
 
-		if no_vote: #Counter(x for _,x in self.pending_vote[idx])[False] >= self.quorum:
-			# So sad: there is a quorum for rejecting this transaction
-			# so we will now add it to the 'no' bucket.
-			# Optional TODO: invalidate in the pending lists 
-			self.commit_no.add(idx)
+				## CHECK CORRECT: Should I add the used transactions to self.pending_used?
+				if not self.quiet:
+					print "Commit yes"
+				return False
 
-			self.on_commit( idx, False )
-			if not self.quiet:
-				print "Commit no"
-			return False
+			if no_vote: #Counter(x for _,x in self.pending_vote[idx])[False] >= self.quorum:
+				# So sad: there is a quorum for rejecting this transaction
+				# so we will now add it to the 'no' bucket.
+				# Optional TODO: invalidate in the pending lists 
+				self.commit_no.add(idx)
+
+				self.on_commit( idx, False )
+				if not self.quiet:
+					print "Commit no"
+				return False
 
 		return False # No further work
 
