@@ -29,7 +29,7 @@ def packageTx(data, deps, num_out):
 	return (hexlify(actualID), sorted(deps), map(hexlify,out))
 
 class Node:
-	def __init__(self, start = [], quorum=1, name = None):
+	def __init__(self, start = [], quorum=1, name = None, shard=None):
 		self.quorum = quorum
 		self.name = name if name is not None else urandom(16)
 		self.pending_vote = defaultdict(set)
@@ -44,6 +44,11 @@ class Node:
 		self.commit_used = set()
 
 		self.quiet = False
+
+		if shard is None:
+			self.shard = ["0"*64, "f"*64]
+		else:
+			self.shard = shard
 
 	def gossip_towards(self, other_node):
 		for k, v in self.pending_vote.iteritems():
@@ -73,7 +78,8 @@ class Node:
 
 	def _process(self, Tx):
 		idx, deps, new_obj = Tx
-		deps = set(deps)
+		all_deps = set(deps)
+		deps = {d for d in deps if self.shard[0] <= d <= self.shard[1]}
 		new_obj = set(new_obj) # By construction no repeats & fresh names
 
 		if (idx in self.commit_yes or idx in self.commit_no):
@@ -98,7 +104,9 @@ class Node:
 			# If we cannot exclude it out of hand then we kick in
 			# the consensus protocol by considering it a candidate.
 
-		if not ( (self.name, True) in self.pending_vote[idx] or (self.name, False) in self.pending_vote[idx]):
+		xdeps = tuple(sorted(list(deps)))
+
+		if not ( (self.name, xdeps, True) in self.pending_vote[idx] or (self.name, xdeps, False) in self.pending_vote[idx]):
 			# We have not considered this as a pending candidate before
 			# So now we have to vote on it.
 
@@ -115,10 +123,10 @@ class Node:
 					# We cast a 'yes' vote -- since it seems that there
 					# are no conflicts for this transaction in our pending list.
 
-					self.pending_vote[idx].add( (self.name,True) )
+					self.pending_vote[idx].add( (self.name, xdeps, True) )
 					self.pending_used |= set((d, idx) for d in deps)
 					
-					self.on_vote( (self.name,True) )
+					self.on_vote( (self.name, xdeps, True) )
 
 					# TODO: add new transactions to available here
 					#       Hm, actually we should not until it is confirmed.
@@ -131,9 +139,9 @@ class Node:
 				else:
 					# We cast a 'no' vote since there is a conflict in our
 					# history of transactions.
-					self.pending_vote[idx].add( (self.name, False) )
+					self.pending_vote[idx].add( (self.name, xdeps, False) )
 
-					self.on_vote( (self.name, False) )
+					self.on_vote( (self.name, xdeps, False) )
 
 					if not self.quiet:
 						print "Pending no"
@@ -144,8 +152,16 @@ class Node:
 				# We continue in case voting helps move things. This
 				# happens in case others know about this transaction.
 
+		Votes = Counter()
+		for oname, odeps, ovote in self.pending_vote[idx]:
+			for d in odeps:
+				Votes.update( [(d, ovote)] )
+
+		yes_vote = all( Votes[(d, True)] >= self.quorum for d in all_deps )
+		no_vote = any( Votes[(d, False)] >= self.quorum for d in all_deps )
+
 		## Time to count votes for this transaction
-		if Counter(x for _,x in self.pending_vote[idx])[True] >= self.quorum:
+		if yes_vote: # Counter(x for _,x in self.pending_vote[idx])[True] >= self.quorum:
 			# We have a Quorum for including the transaction. So we update
 			# all the committed state monotonically.
 			self.commit_yes.add(idx)
@@ -159,7 +175,7 @@ class Node:
 				print "Commit yes"
 			return False
 
-		if Counter(x for _,x in self.pending_vote[idx])[False] >= self.quorum:
+		if no_vote: #Counter(x for _,x in self.pending_vote[idx])[False] >= self.quorum:
 			# So sad: there is a quorum for rejecting this transaction
 			# so we will now add it to the 'no' bucket.
 			# Optional TODO: invalidate in the pending lists 
@@ -201,7 +217,7 @@ def test_wellformed():
 	resources = [hexlify(urandom(16)) for _ in range(1000)]
 	# def packageTx(data, deps, num_out)
 	transactions = []
-	for x in range(1000):
+	for x in range(100):
 		deps = sample(resources,2)
 		data = json.dumps({"ID":x})
 		tx = packageTx(data, deps, 2)
@@ -273,4 +289,22 @@ def test_quorum_simple():
 	n2.process(T1)
 	assert "T1" in n2.commit_yes
 
+def test_shard_simple():
+	T1 = ("333", ["444", "ccc"], [])
+	T2 = ("bbb", ["444", "ddd"], [])
 
+	n1 = Node(["444"], 1, name="n1", shard=["000", "aaa"])
+	n2 = Node(["ccc", "ddd"], 1, name="n2", shard=["aaa", "fff"])
+
+	n1.process(T1)
+	n1.process(T2)
+	print n1.pending_vote
+	n2.process(T2)
+	n2.process(T1)
+
+	n1.gossip_towards(n2)
+
+	n2.process(T1)
+	n2.process(T2)
+	
+	print n2.pending_vote
