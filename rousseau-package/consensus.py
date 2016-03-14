@@ -133,7 +133,7 @@ class Node:
 				# So there is no way we will ever accept this
 				# and neither will anyone else
 				self.commit_no.add(idx)
-				self.on_commit( idx, False )
+				self.on_commit( Tx, False )
 
 				if not self.quiet:
 					print "Add to no"
@@ -164,7 +164,7 @@ class Node:
 					self.pending_vote[idx].add( (self.name, xdeps, True) )
 					self.pending_used |= set((d, idx) for d in deps)
 					
-					self.on_vote( (self.name, xdeps, True) )
+					self.on_vote( Tx, (self.name, xdeps, True) )
 
 					# TODO: add new transactions to available here
 					#       Hm, actually we should not until it is confirmed.
@@ -179,7 +179,7 @@ class Node:
 					# history of transactions.
 					self.pending_vote[idx].add( (self.name, xdeps, False) )
 
-					self.on_vote( (self.name, xdeps, False) )
+					self.on_vote( Tx, (self.name, xdeps, False) )
 
 					if not self.quiet:
 						print "Pending no"
@@ -210,7 +210,7 @@ class Node:
 				self.pending_available |= new_obj ## Add new transactions here
 				self.commit_used |= set(deps)
 
-				self.on_commit( idx, True )
+				self.on_commit( Tx, True )
 
 				## CHECK CORRECT: Should I add the used transactions to self.pending_used?
 				if not self.quiet:
@@ -223,7 +223,7 @@ class Node:
 				# Optional TODO: invalidate in the pending lists 
 				self.commit_no.add(idx)
 
-				self.on_commit( idx, False )
+				self.on_commit( Tx, False )
 				if not self.quiet:
 					print "Commit no"
 				return False
@@ -231,3 +231,64 @@ class Node:
 		return False # No further work
 
 
+class MockNode(Node):
+
+	def set_send(self, sender):
+		self.send = sender
+
+	def receive(self, message):
+		# Ignore messages we sent
+		if self.name == message["from"]:
+			return
+
+		if message['action'] == "vote":
+			tx = message['Tx']
+			vote = message['vote']
+			if vote not in self.pending_vote[tx[0]]:
+				self.pending_vote[tx[0]].add( vote )
+				self.process(tx)
+	
+		if message['action'] == "commit":
+			print message
+			
+
+
+
+	def on_vote(self, full_tx, vote):
+		msg = { "action":"vote", "from":self.name, "Tx":full_tx, "vote":vote }
+		self.send(msg)
+
+	def on_commit(self, full_tx, yesno):
+		msg = { "action":"commit", "from":self.name, "Tx":full_tx, "yesno":yesno }
+		self.send(msg)
+
+def test_shard_many():
+	limits = sorted([hexlify(urandom(32)) for _ in range(100)])
+	limits = ["0" * 64] + limits + ["f" * 64]
+
+	pre = ["444", "ccc", "ddd"]
+	nodes = [MockNode(pre, 1, name="n%s" % i, shard=[b0,b1]) for i, (b0, b1) in enumerate(zip(limits[:-1],limits[1:]))]
+
+	def send(msg):
+		tx = msg["Tx"]
+		ns = [n for n in nodes if n._within_TX(tx)]
+		for n in ns:
+			n.receive(msg)
+
+	for n in nodes:
+		n.set_send(send)
+
+	T1 = ("333", ["444", "ccc"], [])
+	# T2 = ("bbb", ["444", "ddd"], [])
+
+
+	n1 = [n for n in nodes if n._within_TX(T1)]
+	#n2 = [n for n in nodes if n._within_TX(T2)]
+
+	# assert len(n1) == 3 and len(n2) == 3
+
+	for n in n1:
+		n.process(T1)
+
+	#for n in n2:
+	#	n.process(T2)		

@@ -1,3 +1,5 @@
+import sys
+
 import json
 import time
 
@@ -29,8 +31,10 @@ if __name__ == "__main__":
 	shuffle(transactions)
 	# tx_list = sample(transactions, 100)
 
-	pr = cProfile.Profile()
-	pr.enable()
+
+	if "-P" in sys.argv:
+		pr = cProfile.Profile()
+		pr.enable()
 
 	with Timer() as t:
 		for tx, data in transactions:
@@ -41,14 +45,17 @@ if __name__ == "__main__":
 
 			## Now process this transaction
 			n.process(tx)
-	pr.disable()
-	s = StringIO.StringIO()
-	sortby = "tottime"
-	ps = pstats.Stats(pr, stream=s)
-	ps.strip_dirs()
-	ps.sort_stats(sortby)
-	ps.print_stats()
-	print s.getvalue()
+
+	if "-P" in sys.argv:
+		pr.disable()
+		s = StringIO.StringIO()
+		sortby = "tottime"
+		ps = pstats.Stats(pr, stream=s)
+		ps.strip_dirs()
+		ps.sort_stats(sortby)
+		ps.print_stats()
+		print s.getvalue()
 
 
 	print "Time taken: %2.2f sec" % (t.interval) 
+	
