@@ -299,7 +299,7 @@ def test_shard_many():
 	n1 = [n for n in nodes if n._within_TX(T1)]
 	n2 = [n for n in nodes if n._within_TX(T2)]
 
-	# assert len(n1) == 3 and len(n2) == 3
+	assert len(n1) == 3 and len(n2) == 3
 
 	for n in n1:
 		n.process(T1)
