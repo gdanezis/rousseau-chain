@@ -10,7 +10,7 @@ from binascii import hexlify
 
 def test_random():
 	resources = [hexlify(urandom(16)) for _ in range(300)]
-	transactions = [(hexlify(urandom(16)), sample(resources,2), []) for _ in range(300)]
+	transactions = [(hexlify(urandom(16)), sample(resources,2), [], "") for _ in range(300)]
 
 	n = Node(resources, 2)
 	shuffle(transactions)
@@ -50,7 +50,7 @@ def test_wellformed():
 
 	with Timer() as t:
 		for tx, data in transactions:
-			idx, deps, out = tx
+			idx, deps, out, txdata = tx
 
 			## First perform the Tx checks
 			assert packageTx(data, deps, 2) == tx
@@ -61,8 +61,8 @@ def test_wellformed():
 	print "Time taken: %2.2f sec" % (t.interval) 
 
 def test_small():
-	T1 = ("T1", ["A", "B"], [])
-	T2 = ("T2", ["B", "C"], [])
+	T1 = ("T1", ["A", "B"], [], "")
+	T2 = ("T2", ["B", "C"], [], "")
 
 	n = Node(["A", "B", "C"],1)
 	n.process(T1)
@@ -71,8 +71,8 @@ def test_small():
 	assert "T2" not in n.commit_yes
 
 def test_small_chain():
-	T1 = ("T1", ["A"], ["B"])
-	T2 = ("T2", ["B"], ["C"])
+	T1 = ("T1", ["A"], ["B"], "")
+	T2 = ("T2", ["B"], ["C"], "")
 
 	n = Node(["A"],1)
 	n.process(T1)
@@ -81,10 +81,10 @@ def test_small_chain():
 
 
 def test_chain_conflict():
-	T1 = ("T1", ["A"], ["B"])
-	T2 = ("T2", ["A"], ["C"])
-	T3 = ("T3", ["B"], ["D"])
-	T4 = ("T4", ["C"], ["F"])
+	T1 = ("T1", ["A"], ["B"], "")
+	T2 = ("T2", ["A"], ["C"], "")
+	T3 = ("T3", ["B"], ["D"], "")
+	T4 = ("T4", ["C"], ["F"], "")
 
 	n = Node(["A"],1)
 	for tx in [T1, T2, T3, T4]:
@@ -92,8 +92,8 @@ def test_chain_conflict():
 
 
 def test_quorum_simple():
-	T1 = ("T1", ["A", "B"], [])
-	T2 = ("T2", ["B", "C"], [])
+	T1 = ("T1", ["A", "B"], [], "")
+	T2 = ("T2", ["B", "C"], [], "")
 
 	n1 = Node(["A", "B", "C"], 2)
 	n2 = Node(["A", "B", "C"], 2)
@@ -112,9 +112,9 @@ def test_quorum_simple():
 
 
 def test_quorum_threesome():
-	T1 = ("T1", ["A", "B"], [])
-	T2 = ("T2", ["B", "C"], [])
-	T3 = ("T3", ["A", "C"], [])
+	T1 = ("T1", ["A", "B"], [], "")
+	T2 = ("T2", ["B", "C"], [], "")
+	T3 = ("T3", ["A", "C"], [], "")
 
 	n1 = Node(["A", "B", "C"], 2)
 	n2 = Node(["A", "B", "C"], 2)
@@ -144,8 +144,8 @@ def test_quorum_threesome():
 
 
 def test_shard_simple():
-	T1 = ("333", ["444", "ccc"], [])
-	T2 = ("bbb", ["444", "ddd"], [])
+	T1 = ("333", ["444", "ccc"], [], "")
+	T2 = ("bbb", ["444", "ddd"], [], "")
 
 	n1 = Node(["444"], 1, name="n1", shard=["000", "aaa"])
 	n2 = Node(["ccc", "ddd"], 1, name="n2", shard=["aaa", "fff"])
@@ -170,8 +170,8 @@ def test_shard_many():
 	pre = ["444", "ccc", "ddd"]
 	nodes = [Node(pre, 1, name="n%s" % i, shard=[b0,b1]) for i, (b0, b1) in enumerate(zip(limits[:-1],limits[1:]))]
 
-	T1 = ("333", ["444", "ccc"], [])
-	T2 = ("bbb", ["444", "ddd"], [])
+	T1 = ("333", ["444", "ccc"], [], "")
+	T2 = ("bbb", ["444", "ddd"], [], "")
 
 	n1 = [n for n in nodes if n._within_TX(T1)]
 	n2 = [n for n in nodes if n._within_TX(T2)]
