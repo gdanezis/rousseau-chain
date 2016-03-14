@@ -86,11 +86,11 @@ class Node:
 		other_node.commit_used |= self.commit_used
 
 
-	def on_vote(self, vote):
+	def on_vote(self, full_tx, vote):
 		pass
 
 
-	def on_commit(self, tx, yesno):
+	def on_commit(self, full_tx, yesno):
 		pass
 
 

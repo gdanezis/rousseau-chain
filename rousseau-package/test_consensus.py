@@ -108,6 +108,38 @@ def test_quorum_simple():
 	n2.process(T1)
 	assert "T1" in n2.commit_yes
 
+def test_quorum_threesome():
+	T1 = ("T1", ["A", "B"], [])
+	T2 = ("T2", ["B", "C"], [])
+	T3 = ("T3", ["A", "C"], [])
+
+	n1 = Node(["A", "B", "C"], 2)
+	n2 = Node(["A", "B", "C"], 2)
+	n3 = Node(["A", "B", "C"], 2)
+
+	n1.process(T1)
+	n2.process(T2)
+	n3.process(T3)
+
+	n1.process(T2)
+	n1.process(T3)
+	n2.process(T1)
+	n2.process(T3)
+	n3.process(T1)
+	n3.process(T2)
+
+	n1.gossip_towards(n3)
+	n2.gossip_towards(n3)
+
+	n3.process(T1)
+	n3.process(T2)	
+	n3.process(T3)
+	assert "T1" in n3.commit_no
+	assert "T2" in n3.commit_no
+	assert "T3" in n3.commit_no
+
+
+
 def test_shard_simple():
 	T1 = ("333", ["444", "ccc"], [])
 	T2 = ("bbb", ["444", "ddd"], [])
