@@ -79,6 +79,7 @@ def test_small_chain():
 	n.process(T2)
 	assert "C" in n.pending_available
 
+
 def test_chain_conflict():
 	T1 = ("T1", ["A"], ["B"])
 	T2 = ("T2", ["A"], ["C"])
@@ -88,6 +89,7 @@ def test_chain_conflict():
 	n = Node(["A"],1)
 	for tx in [T1, T2, T3, T4]:
 		n.process(tx)
+
 
 def test_quorum_simple():
 	T1 = ("T1", ["A", "B"], [])
@@ -107,6 +109,7 @@ def test_quorum_simple():
 
 	n2.process(T1)
 	assert "T1" in n2.commit_yes
+
 
 def test_quorum_threesome():
 	T1 = ("T1", ["A", "B"], [])
