@@ -12,9 +12,13 @@ from hashlib import sha256
 from struct import pack
 
 def h(data):
+	""" Define the hash function used in the system. This is used to
+	derive transaction and object identifiers. """
 	return hexlify(sha256(data).digest())
 
 def packageTx(data, deps, num_out):
+	""" Package some transaction data into an appropriate identifier,
+	and resulting new object identifiers. """
 	hx = sha256(data)
 	for d in sorted(deps):
 		hx.update(d)
@@ -29,6 +33,8 @@ def packageTx(data, deps, num_out):
 	return (hexlify(actualID), sorted(deps), map(hexlify,out), data)
 
 class Node:
+	""" A class representing an authority participating in the consensus. """
+
 	def __init__(self, start = [], quorum=1, name = None, shard=None):
 		self.transactions = {}
 
@@ -54,10 +60,14 @@ class Node:
 
 
 	def _within_ID(self, idx):
+		""" Tests whether an object identifer is within the 
+		remit of this Node. """
 		return self.shard[0] <= idx < self.shard[1]
 
 
 	def _within_TX(self, Tx):
+		""" Test whether the transaction and its dependencies are
+		within the remit of this Node. """
 		## Tests whether a transaction is related to this node in 
 		## any way. If not there is no case for processing it.
 		idx, deps, outs, txdata = Tx
@@ -74,6 +84,7 @@ class Node:
 
 
 	def gossip_towards(self, other_node):
+		""" A primitive way to probagate information. """
 		for k, v in self.pending_vote.iteritems():
 			other_node.pending_vote[k] |= v
 
@@ -87,14 +98,17 @@ class Node:
 
 
 	def on_vote(self, full_tx, vote):
+		""" What the Node does when a transaction vote is cast. """
 		pass
 
 
 	def on_commit(self, full_tx, yesno):
+		""" What to do when a transaction commit is cast. """
 		pass
 
 
 	def process(self, Tx):
+		""" Process a transaction to vote or commit it. """
 
 		if not self._within_TX(Tx):
 			return
@@ -111,6 +125,7 @@ class Node:
 
 
 	def do_commit_yes(self, Tx):
+		""" What to do when commiting a transaction to the positive log. """
 		idx, deps, new_obj, txdata = Tx
 		self.commit_yes.add(idx)
 		self.pending_available |= set(new_obj) ## Add new transactions here
@@ -118,7 +133,6 @@ class Node:
 
 
 	def _process(self, Tx):
-
 		if not self._within_TX(Tx):
 			return False
 
@@ -239,9 +253,12 @@ class Node:
 class MockNode(Node):
 
 	def set_send(self, sender):
+		""" Set a custom network sender. """
 		self.send = sender
 
 	def receive(self, message):
+		""" How to process incoming messages. """
+
 		# Ignore messages we sent
 		if self.name == message["from"]:
 			return
@@ -262,13 +279,15 @@ class MockNode(Node):
 	
 		if message['action'] == "commit":
 			idx = tx[0]
+
+			# if not (idx in self.commit_yes or idx in self.commit_no):
+			#	self.process(tx)
+
 			if message["yesno"] == False:
 				self.commit_no.add(idx)
 			else:
 				self.do_commit_yes(tx)
 
-			# if not (idx in self.commit_yes or idx in self.commit_no):
-			#	self.process(tx)
 
 	def on_vote(self, full_tx, vote):
 		msg = { "action":"vote", "from":self.name, "Tx":full_tx, "vote":vote }
