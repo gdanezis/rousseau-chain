@@ -24,6 +24,7 @@ def testkafka():
 
 @task
 def shards():
+	""" Write out 8 shards and their bounds. """
 	from binascii import hexlify
 	from os import urandom
 
