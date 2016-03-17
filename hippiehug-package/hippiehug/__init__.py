@@ -1,5 +1,5 @@
 
-VERSION = "0.0.3"
+VERSION = "0.0.4"
 
 from Tree import Tree
 from Chain import Chain, Block
