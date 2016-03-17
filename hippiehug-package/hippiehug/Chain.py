@@ -31,8 +31,12 @@ class Block:
         store[new_b.xhead] = new_b
         return new_b
 
-    def get_item(self, store, block_seq, item_seq):
+    def get_item(self, store, block_seq, item_seq, evidence = None):
         # print "FIND: %s (%s, %s)" % (self.sequence, block_seq, item_seq)
+
+        if evidence != None:
+            evidence[self.xhead] = self
+
         if block_seq == self.sequence:
             return self.items[item_seq]
 
@@ -45,6 +49,7 @@ class Block:
 
 class Chain:
     def __init__(self, store = {}, root_hash = None):
+        """ Initializes a chained backed by a store. """
         self.store = store
         self.head = root_hash
 
@@ -90,8 +95,6 @@ def test_block_find():
     res1 =  b0.get_item(store, 50, 30)
     assert res1 == "50|30"
     assert b0.get_item(store, 0, 1) == "item2"
-
-
 
 def test_chain():
     vals = []
