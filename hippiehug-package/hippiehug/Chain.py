@@ -3,7 +3,10 @@ from copy import copy
 from Nodes import h, Leaf, Branch
 from Tree import Tree
 
-from msgpack import packb
+try:
+    from msgpack import packb
+except:
+    print("No msgpack")
 
 def get_fingers(seq):
     return set(seq - 1 - ((seq - 1) % (2**f)) for f in range(64))
