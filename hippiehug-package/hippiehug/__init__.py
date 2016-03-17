@@ -2,7 +2,8 @@
 VERSION = "0.0.3"
 
 from Tree import Tree
+from Chain import Chain, Block
 from RedisStore import RedisStore
 from Nodes import h, Leaf, Branch
 
-__all__ = ["Tree", "RedisStore", "h"]
+__all__ = ["Tree", "Chain", "RedisStore", "h"]

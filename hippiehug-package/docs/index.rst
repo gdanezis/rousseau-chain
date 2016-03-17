@@ -58,11 +58,21 @@ The Merkle Tree Classes
    :members:
    :special-members: __init__
 
+.. autoclass:: hippiehug.Chain
+   :members:
+   :special-members: __init__
+
+Helper Structures
+-----------------
+
 .. autoclass:: hippiehug.Leaf
    :members:
 
 .. autoclass:: hippiehug.Branch
    :members: 
+
+.. autoclass:: hippiehug.Block
+   :members:
 
 Backend Storage Drivers
 -----------------------
