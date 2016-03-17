@@ -43,7 +43,7 @@ class Block:
         _, target_h = [(f,block_hash) for (f, block_hash) in self.fingers if f >= block_seq][-1]
 
         target_block = store[target_h]
-        return target_block.get_item(store, block_seq, item_seq)
+        return target_block.get_item(store, block_seq, item_seq, evidence)
 
 
 
@@ -67,12 +67,12 @@ class Chain:
             b1 = last_block.next_block(self.store, items)
             self.head = b1.xhead
 
-    def get(self, block_index, item_index, evidence=False):
+    def get(self, block_index, item_index, evidence=None):
         if self.head is None:
             return None
 
         last_block = self.store[self.head]
-        return last_block.get_item(self.store, block_index, item_index)
+        return last_block.get_item(self.store, block_index, item_index, evidence)
 
 
 def test_block_hash():
@@ -111,3 +111,15 @@ def test_chain():
 
     for i, j, v in vals:
         assert c.get(i, j) == v
+
+def test_chain_evidence():
+    c = Chain()
+    for i in range(0, 99):
+        items = [ "%s|%s" % (i,j) for j in range(100) ]
+        c.multi_add(items)
+
+    evidence = {}
+    res1 =  c.get(50, 30, evidence)
+
+    c2 = Chain(evidence, root_hash = c.head)
+    assert c2.get(50, 30) == "50|30"
