@@ -1,6 +1,10 @@
 from copy import copy
+from binascii import hexlify
 
-from Nodes import h
+from Nodes import h as binary_hash
+
+def ascii_hash(s):
+    return hexlify(binary_hash(s)[:20])
 
 try:
     from msgpack import packb
@@ -21,7 +25,7 @@ class Document:
         self.item = item
         """ The item stored in the Leaf. """
 
-        self.hid = h("D"+self.item)
+        self.hid = ascii_hash("D"+self.item)
 
     def identity(self):
         """ Returns the hash ID of the Leaf. """
@@ -40,7 +44,7 @@ class Block:
 
     def head(self):
         """ Returns the head of the block. """
-        return h(packb(("S", self.sequence, self.fingers, self.length, self.items)))
+        return ascii_hash(packb(("S", self.sequence, self.fingers, self.length, self.items)))
 
     def next_block(self, store, items):
         """ Builds a subsequent block, selaing a list of transactions. """
