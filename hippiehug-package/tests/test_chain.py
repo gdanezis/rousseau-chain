@@ -1,4 +1,4 @@
-from hippiehug.Chain import Chain, Block
+from hippiehug.Chain import Chain, Block, DocChain
 
 
 def test_block_hash():
@@ -50,6 +50,19 @@ def test_chain_evidence():
     c2 = Chain(evidence, root_hash = c.head)
     assert c2.get(50, 30) == "50|30"
 
+def test_chain_doc():
+    c = DocChain()
+    for i in range(0, 99):
+        items = [ "%s|%s" % (i,j) for j in range(100) ]
+        c.multi_add(items)
+
+    evidence = {}
+    res1 =  c.get(50, 30, evidence)
+
+    c2 = DocChain(evidence, root_hash = c.head)
+    assert c2.get(50, 30) == "50|30"
+
+
 import pytest
 
 def test_chain_negative():
@@ -58,8 +71,8 @@ def test_chain_negative():
         items = [ "%s|%s" % (i,j) for j in range(100) ]
         c.multi_add(items)
 
-    with pytest.raises(IndexError) as IX:
+    with pytest.raises(Exception) as IX:
         assert c.get(150, 30) == "50|30"
     
-    with pytest.raises(IndexError) as IX:
+    with pytest.raises(Exception) as IX:
         assert c.get(50, 130) == "50|30"

@@ -1,7 +1,6 @@
 from copy import copy
 
-from Nodes import h, Leaf, Branch
-from Tree import Tree
+from Nodes import h
 
 try:
     from msgpack import packb
@@ -15,6 +14,18 @@ def check_hash(key, val):
     if key != val.hid: # val.identity():
         raise Exception("Value has the wrong hash.")
 
+class Document:
+    __slots__ = ["item", "hid"]
+
+    def __init__(self, item):
+        self.item = item
+        """ The item stored in the Leaf. """
+
+        self.hid = h("D"+self.item)
+
+    def identity(self):
+        """ Returns the hash ID of the Leaf. """
+        return self.hid
 
 class Block:
     def __init__(self, items, sequence=0, fingers=[]):
@@ -22,13 +33,14 @@ class Block:
         self.sequence = sequence
         self.items = items  
         self.fingers = fingers
+        self.length = len(items)
 
         # Precomute the head
         self.hid = self.head()
 
     def head(self):
         """ Returns the head of the block. """
-        return h(packb(("S", self.sequence, self.fingers, self.items)))
+        return h(packb(("S", self.sequence, self.fingers, self.length, self.items)))
 
     def next_block(self, store, items):
         """ Builds a subsequent block, selaing a list of transactions. """
@@ -47,10 +59,17 @@ class Block:
         Optionally returns a bundle of evidence. """
         # print "FIND: %s (%s, %s)" % (self.sequence, block_seq, item_seq)
 
+        if not (0 <= block_seq <= self.sequence):
+            raise Exception("Block is beyond this chain head: must be 0 <= %s <= %s." % (block_seq, self.sequence))
+
         if evidence != None:
             evidence[self.hid] = self
 
         if block_seq == self.sequence:
+
+            if not (0 <= item_seq < self.length):
+               raise Exception("Item is beyond this Block: must be 0 <= %s <= %s." % (item_seq, self.length))
+
             return self.items[item_seq]
 
         _, target_h = [(f,block_hash) for (f, block_hash) in self.fingers if f >= block_seq][-1]
@@ -91,4 +110,20 @@ class Chain:
         last_block = self.store[self.head]
         return last_block.get_item(self.store, block_index, item_index, evidence)
 
+class DocChain(Chain):
+    def multi_add(self, items):
+        docs = map(Document, items)
+        for d in docs:
+            self.store[d.hid] = d
 
+        docs_id = map(lambda d: d.hid, docs)
+        Chain.multi_add(self, docs_id)
+
+    def get(self, block_index, item_index, evidence=None):
+        item = Chain.get(self, block_index, item_index, evidence)
+        d = self.store[item]
+        
+        if evidence != None:
+            evidence[d.hid] = d
+
+        return self.store[item].item
