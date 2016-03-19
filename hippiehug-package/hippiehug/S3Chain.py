@@ -106,7 +106,7 @@ class S3Chain():
 
     def add(self, items):
         """ Add a new block with the given items. """
-        self.chain.multi_add(["Hello", "World"])    
+        self.chain.multi_add(items)    
         self.q.join()
 
         # Only commit the new head after everything else.

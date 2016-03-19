@@ -31,6 +31,9 @@ class Document:
         """ Returns the hash ID of the Leaf. """
         return self.hid
 
+    def __eq__(self, other):
+        return self.hid == other.hid
+
 class Block:
     def __init__(self, items, sequence=0, fingers=[]):
         """ Initialize a block. """
@@ -80,6 +83,9 @@ class Block:
 
         target_block = store[target_h]
         return target_block.get_item(store, block_seq, item_seq, evidence)
+
+    def __eq__(self, other):
+        return self.hid == other.hid
 
 
 
