@@ -8,6 +8,24 @@ from binascii import hexlify
 from os import urandom
 
 from json import dumps, loads
+from Queue import Queue
+from threading import Thread
+
+def worker(q, bucket):
+    while True:
+        (key, value) = q.get()
+        
+        if isinstance(value, Document):
+            bucket.put_object(Key="/Objects/%s" % key, ContentType="text/plain",
+                Body=value.item, Metadata={"type":"Document"})
+
+        if isinstance(value, Block):
+            encoded = dumps({"fingers":value.fingers, "items":value.items, "sequence": value.sequence})
+            bucket.put_object(Key="/Objects/%s" % key, ContentType="text/plain",
+                Body=encoded, Metadata={"type":"Block"})
+
+        q.task_done()
+
 
 class S3Chain():
     def __init__(self, chain_name):
@@ -38,6 +56,14 @@ class S3Chain():
         # Initialize the chain
         self.chain = DocChain(store=self, root_hash=new_root)
 
+        # Initialize the thread pool
+        num_worker_threads = 10
+        self.q = Queue()
+        for i in range(num_worker_threads):
+             t = Thread(args=(self.q,self.bucket), target=worker)
+             t.daemon = True
+             t.start()
+
     def root(self):
         """ Returns the root of the chain. """
         return self.chain.root()
@@ -48,6 +74,8 @@ class S3Chain():
         
         if len(self.cache) > 10000:
             self.cache = {} 
+
+        self.q.join()
 
         o = self.s3.Object(self.name, "/Objects/%s" % key)
         
@@ -65,28 +93,31 @@ class S3Chain():
     def __setitem__(self, key, value):
         if key in self.cache:
             return
+        else:
+            self.cache[key] = value
 
-        if isinstance(value, Document):
-            self.bucket.put_object(Key="/Objects/%s" % key, ContentType="text/plain",
-                Body=value.item, Metadata={"type":"Document"})
+        self.q.put((key, value))
 
-        if isinstance(value, Block):
-            encoded = dumps({"fingers":value.fingers, "items":value.items, "sequence": value.sequence})
-            self.bucket.put_object(Key="/Objects/%s" % key, ContentType="text/plain",
-                Body=encoded, Metadata={"type":"Block"})
+
 
     def add(self, items):
         """ Add a new block with the given items. """
         self.chain.multi_add(["Hello", "World"])    
+        self.q.join()
+
+        # Only commit the new head after everything else.
         new_root = self.chain.root()
         self.bucket.put_object(Key="/root", ContentType="text/plain",
                 Body=new_root, Metadata={"type":"Root"})
+
 
     def get(self, bid, sid, evidence = None):
         """ Get the item at the block bid, position sid. Optionally, gather
         evidence for the proof."""
         return self.chain.get(bid, sid, evidence)
 
+def __del__(self):
+    pass # self.q.join()
 
 ## ====================================================
 ## -------------------- TESTS -------------------------
