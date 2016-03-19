@@ -86,9 +86,13 @@ class Node:
         self.quorum = quorum
         self.name = name if name is not None else urandom(16)
         self.pending_vote = defaultdict(set)
-        #self.pending_no  = defaultdict(set)
 
-        self.pending_available = set(start)
+        if shard is None:
+            self.shard = ["0"*64, "f"*64]
+        else:
+            self.shard = shard
+
+        self.pending_available = set(o for o in start if self._within_ID(o))
         self.pending_used = set()
 
         self.commit_yes  = set()
@@ -99,13 +103,9 @@ class Node:
         self.quiet = False
 
         if __debug__:
-            self.start = set(start)
+            self.start = set(o for o in start if self._within_ID(o))
             self.cache = { }
 
-        if shard is None:
-            self.shard = ["0"*64, "f"*64]
-        else:
-            self.shard = shard
 
     def _within_ID(self, idx):
         """ Tests whether an object identifer is within the 
@@ -176,7 +176,7 @@ class Node:
 
     def _check_invariant(self):
 
-        all_objects = set()
+        all_objects = set(self.start)
         used_objects = set()
 
         for txa in self.commit_yes:
@@ -185,14 +185,18 @@ class Node:
             all_objects |= set(o for o in new_obj if self._within_ID(o))
             used_objects |= set(o for o in deps if self._within_ID(o))
 
+
+        assert all_objects == self.pending_available
         assert used_objects == self.commit_used
         
         for o in self.commit_used:
             assert self._within_ID(o)
 
-        s1 = {t for t in used_objects if self._within_ID(t)}
-        s2 = {t for t in all_objects | set(self.start) if self._within_ID(t)}
-        assert s1 <= s2
+        assert used_objects <= all_objects
+
+        potentially_used = { xd for xd, xtx in self.pending_used if xtx not in self.commit_no} 
+        actually_available = self.pending_available - potentially_used
+        assert (all_objects - used_objects) - potentially_used == actually_available
 
         return True
 
