@@ -85,52 +85,60 @@ class RedisNode(Node):
         """ How to process incoming messages. """
 
         try:
+            # Ensure the messae decodes
             message = loads(message)
+
+            # Make sure some basic stuctures are here
+            originator = message["from"]
+            tx, action = message['Tx'], message['action']
+            idx, deps, new_obj, data = tx
+
         except Exception as e:
-            return
+            raise Exception("Badly formatted messages: %s" % str(e))
 
         # Ignore messages we sent
-        if self.name == message["from"]:
+        if self.name == originator:
             return
-
-        tx = message['Tx']
-        idx, deps, new_obj, data = tx
         
         if not idx == packageTx(data, deps, len(new_obj))[0]:
             raise Exception("Invalid transaction.")
 
         if not self._within_TX(tx):
-            raise Exception("Transaction not of interest.")
+            if action == "process":
+                # We are going to re-route the message on a correct channel
+                msg = dumps({ "action":"process", "from":self.name, "Tx":tx })
+                self.send(tx, msg)
+                return
+            else:
+                raise Exception("Transaction not of interest.")
 
-        if message['action'] == "vote":
+        if action == "vote":
 
-            n, l, v = tuple(message['vote'])
+            n, l, v = message['vote']
             vote = (n, tuple(l), v)
-
             self.RLogger.info("Receive vote (%s) for %s (%s)" % (v, idx[:6], self.name))
+
             
             if vote not in self.pending_vote[idx]:
                 self.pending_vote[idx].add( vote )
                 self.process(tx)
     
-        if message['action'] == "commit":
+        if action == "commit":
+
             yesno = message['yesno']
             self.RLogger.info("Receive commit (%s) for %s (%s)" % (yesno ,idx[:6], self.name))
 
-            if message["yesno"] == False:
-                self.commit_no.add(idx)
-            else:
+            if yesno:
                 self.do_commit_yes(tx)
+            else:
+                self.commit_no.add(idx)
 
-        if message['action'] == "process":
+        if action == "process":
             self.process(tx)
 
 
     def on_vote(self, full_tx, vote):
         msg = dumps({ "action":"vote", "from":self.name, "Tx":full_tx, "vote":vote })
-        
-        idx, deps, new_obj, data = loads(msg)["Tx"]
-        assert full_tx[0] == packageTx(data, deps, len(new_obj))[0]
         self.send(full_tx, msg)
 
 

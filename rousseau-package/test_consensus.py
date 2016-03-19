@@ -226,7 +226,7 @@ import logging
 from threading import Timer as xTimer
 
 def test_redis_consensus():
-    logging.getLogger().setLevel(logging.DEBUG)
+    # logging.getLogger().setLevel(logging.DEBUG)
 
     _, _, [A, B, C], txdata = packageTx(data="data1", deps=[], num_out=3)
 
@@ -272,9 +272,6 @@ def test_redis_shard_many():
     T1 = packageTx("333", [A, B], 2)
     T2 = packageTx("bbb", [A, C], 2)
 
-    n1 = [n for n in nodes if n._within_TX(T1)]
-    n2 = [n for n in nodes if n._within_TX(T2)]
-
     # Relevent Nodes
     r1nodes = [n for n in nodes if n._within_TX(T1)]
     r1nodes[0].process(T1)
@@ -295,4 +292,39 @@ def test_redis_shard_many():
     t = xTimer(3.0, test_condition)
     t.start()
 
+from json import dumps
 
+def test_redis_shard_reflect():
+
+    logging.getLogger().setLevel(logging.DEBUG)
+    shard_map = make_shard_map(100)
+    
+    _, _, [A, B, C], txdata = packageTx(data="data1", deps=[], num_out=3)
+
+    pre = [A, B, C]
+    nodes = [RedisNode(pre, 1, name="n%s" % i, shard=i, shard_map=shard_map) for i in shard_map]
+
+    T1 = packageTx("333", [A, B], 2)
+    T2 = packageTx("bbb", [A, C], 2)
+    T1_json = dumps({ "action":"process", "from":"ext", "Tx":T1 })
+    T2_json = dumps({ "action":"process", "from":"ext", "Tx":T2 })
+
+    nodes[0].r.publish('votes:%s' % i , T1_json)
+    nodes[0].r.publish('votes:%s' % i , T2_json)
+
+    # Relevent Nodes
+    r1nodes = [n for n in nodes if n._within_TX(T1)]
+    r2nodes = [n for n in nodes if n._within_TX(T2)]
+    
+
+    def test_condition():
+        Good = True
+        Good &= T1[0] in r1nodes[-1].commit_yes
+        Good &= T1[0] in r1nodes[0].commit_yes
+        Good &= T2[0] in r2nodes[-1].commit_no
+        Good &= T2[0] in r2nodes[0].commit_no
+        assert Good
+        print "All: %s" % Good
+
+    t = xTimer(3.0, test_condition)
+    t.start()
