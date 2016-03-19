@@ -12,18 +12,18 @@ from struct import pack
 from json import loads, dumps
 from threading import Thread
 
-from consensus import Node, packageTx
+from consensus import Node, packageTx, within_TX
 import redis
 
 
 class Listener(Thread):
+    """ Helper function that monitors a channel and fires receive events. """
     def __init__(self, redis_node, channels):
         Thread.__init__(self)
         self.node = redis_node
-        self.redis = redis_node.r
         self.daemon = True
 
-        self.pubsub = self.redis.pubsub()
+        self.pubsub = self.node.r.pubsub()
         self.pubsub.subscribe(channels)
     
     def work(self, item):
@@ -39,11 +39,12 @@ class Listener(Thread):
                 self.work(item)
 
     def teardown(self):
-        print "Tear down PubSub"
+        self.node.RLogger.info("Tear down PubSub (%s)" % self.node.name)
         self.pubsub.unsubscribe()
 
 
 class RedisNode(Node):
+    """ A consensus node based on Redis Pub/Sup. """
 
     def __init__(self, start = [], quorum=1, name = None, 
             shard=None, shard_map=None,
@@ -52,19 +53,19 @@ class RedisNode(Node):
         self.shard_id = shard
         self.shard_map = shard_map
 
+        # Configure the shard
         if shard is not None:
+            assert shard in shard_map
             shard = shard_map[shard]
+            self.client = Listener(self, ['votes:%s' % self.shard_id])
+        else:
+            self.client = Listener(self, ['votes'])
 
+        # Initialize the node for consensus.
         Node.__init__(self, start, quorum, name, shard)
 
-        if shard_map is None:
-            # Register on the PubSub system
-            self.client = Listener(self, ['votes'])
-            self.client.start()
-        else:
-            self.client = Listener(self, ['votes:%s' % self.shard_id])
-            self.client.start()
-
+        # Start the subscription loop and log.        
+        self.client.start()
         self.RLogger = logging.getLogger()
 
     def __del__(self):
@@ -75,7 +76,7 @@ class RedisNode(Node):
         if self.shard_map is not None:
             for i in self.shard_map:
                 (b0, b1) = self.shard_map[i]
-                if b0<= tx[0] < b1:
+                if within_TX(tx, b0, b1):
                     self.r.publish('votes:%s' % i , msg)
         else:
             self.r.publish('votes' , msg)
