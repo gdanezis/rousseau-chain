@@ -71,7 +71,6 @@ class RedisNode(Node):
     def __del__(self):
         self.client.teardown()
 
-
     def send(self, tx, msg):
         if self.shard_map is not None:
             for i in self.shard_map:
@@ -113,18 +112,17 @@ class RedisNode(Node):
                 raise Exception("Transaction not of interest.")
 
         if action == "vote":
-
+            # We process an incoming vote.
             n, l, v = message['vote']
             vote = (n, tuple(l), v)
             self.RLogger.info("Receive vote (%s) for %s (%s)" % (v, idx[:6], self.name))
-
             
             if vote not in self.pending_vote[idx]:
                 self.pending_vote[idx].add( vote )
                 self.process(tx)
     
         if action == "commit":
-
+            # We process an incoming commit.
             yesno = message['yesno']
             self.RLogger.info("Receive commit (%s) for %s (%s)" % (yesno ,idx[:6], self.name))
 
@@ -134,6 +132,7 @@ class RedisNode(Node):
                 self.commit_no.add(idx)
 
         if action == "process":
+            # We process a request
             self.process(tx)
 
 

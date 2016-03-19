@@ -1,12 +1,15 @@
-from consensus import Node, packageTx
-
 import json
 import time
-
+from json import dumps
+import logging
+from threading import Timer as xTimer
 from os import urandom
 from random import sample, shuffle
 from binascii import hexlify
 
+from RedisConsensus import RedisNode
+from MockConsensus import MockNode
+from consensus import Node, packageTx, within_TX, make_shard_map
 
 def test_random():
     resources = [hexlify(urandom(16)) for _ in range(300)]
@@ -185,8 +188,6 @@ def test_shard_many():
         n.process(T2)       
 
 
-from MockConsensus import MockNode
-
 def test_mock_shard_many():
     limits = sorted([hexlify(urandom(32)) for _ in range(100)])
     limits = ["0" * 64] + limits + ["f" * 64]
@@ -221,9 +222,7 @@ def test_mock_shard_many():
         n.process(T2)       
 
 
-from RedisConsensus import RedisNode
-import logging
-from threading import Timer as xTimer
+
 
 def test_redis_consensus():
     # logging.getLogger().setLevel(logging.DEBUG)
@@ -240,8 +239,6 @@ def test_redis_consensus():
     
     node1.process(T1)
     node1.process(T2)
-
-from consensus import within_TX, make_shard_map
 
 
 def test_distribution():
@@ -292,7 +289,6 @@ def test_redis_shard_many():
     t = xTimer(3.0, test_condition)
     t.start()
 
-from json import dumps
 
 def test_redis_shard_reflect():
 

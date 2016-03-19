@@ -16,11 +16,11 @@ def make_shard_map(num = 100):
     """ Makes a map for 'num' shards (defaults to 100). """
 
     limits = []
-
     MAX = 2**16
+
     for l in range(0, MAX - 1, MAX / 100):
-        l_lower = hexlify(pack(">H", l))
-        limits.append(l_lower + ("00" * 20))
+        l_lower = hexlify(pack(">H", l)) + ("00" * 20)
+        limits.append(l_lower)
 
     limits = limits + ["f" * 64]
 
@@ -41,8 +41,7 @@ def within_ID(idx, b0, b1):
 def within_TX(Tx, b0, b1):
     """ Test whether the transaction and its dependencies are
     within the shard bounds. """
-    ## Tests whether a transaction is related to this node in 
-    ## any way. If not there is no case for processing it.
+    
     idx, deps, outs, txdata = Tx
     if within_ID(idx, b0, b1):
         return True
@@ -55,10 +54,12 @@ def within_TX(Tx, b0, b1):
 
     return False
 
+
 def h(data):
     """ Define the hash function used in the system. This is used to
     derive transaction and object identifiers. """
     return hexlify(sha256(data).digest()[:20])
+
 
 def packageTx(data, deps, num_out):
     """ Package some transaction data into an appropriate identifier,
@@ -96,6 +97,10 @@ class Node:
         self.commit_used = set()
 
         self.quiet = False
+
+        if __debug__:
+            self.start = set(start)
+            self.cache = { }
 
         if shard is None:
             self.shard = ["0"*64, "f"*64]
@@ -159,13 +164,45 @@ class Node:
 
     def do_commit_yes(self, Tx):
         """ What to do when commiting a transaction to the positive log. """
+
+        if __debug__:
+            self.cache[Tx[0]] = Tx
+
         idx, deps, new_obj, txdata = Tx
         self.commit_yes.add(idx)
-        self.pending_available |= set(new_obj) ## Add new transactions here
-        self.commit_used |= set(deps)
+        self.pending_available |= set(o for o in new_obj if self._within_ID(o)) ## Add new transactions here
+        self.commit_used |= set(o for o in deps if self._within_ID(o))
+
+
+    def _check_invariant(self):
+
+        all_objects = set()
+        used_objects = set()
+
+        for txa in self.commit_yes:
+            assert txa in self.cache
+            idx, deps, new_obj, data = self.cache[txa]
+            all_objects |= set(o for o in new_obj if self._within_ID(o))
+            used_objects |= set(o for o in deps if self._within_ID(o))
+
+        assert used_objects == self.commit_used
+        
+        for o in self.commit_used:
+            assert self._within_ID(o)
+
+        s1 = {t for t in used_objects if self._within_ID(t)}
+        s2 = {t for t in all_objects | set(self.start) if self._within_ID(t)}
+        assert s1 <= s2
+
+        return True
 
 
     def _process(self, Tx):
+
+        if __debug__:
+            self.cache[Tx[0]] = Tx
+            self._check_invariant()
+
         if not self._within_TX(Tx):
             return False
 
@@ -178,7 +215,6 @@ class Node:
             # Do not process twice
             logging.info("Do nothing for %s (%s)" % (idx[:6], self.name))
 
-
             return False # No further progress can be made
 
         else:
@@ -187,6 +223,7 @@ class Node:
                 # Some dependencies are used already!
                 # So there is no way we will ever accept this
                 # and neither will anyone else
+
                 self.commit_no.add(idx)
                 self.on_commit( Tx, False )
 
@@ -269,6 +306,7 @@ class Node:
                 # So sad: there is a quorum for rejecting this transaction
                 # so we will now add it to the 'no' bucket.
                 # Optional TODO: invalidate in the pending lists 
+
                 self.commit_no.add(idx)
 
                 self.on_commit( Tx, False )
