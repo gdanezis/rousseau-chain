@@ -2,6 +2,7 @@
 
 import json
 import time
+import logging
 
 from os import urandom
 from random import sample, shuffle
@@ -14,7 +15,7 @@ from struct import pack
 def h(data):
 	""" Define the hash function used in the system. This is used to
 	derive transaction and object identifiers. """
-	return hexlify(sha256(data).digest())
+	return hexlify(sha256(data).digest()[:20])
 
 def packageTx(data, deps, num_out):
 	""" Package some transaction data into an appropriate identifier,
@@ -57,7 +58,6 @@ class Node:
 			self.shard = ["0"*64, "f"*64]
 		else:
 			self.shard = shard
-
 
 	def _within_ID(self, idx):
 		""" Tests whether an object identifer is within the 
@@ -117,8 +117,8 @@ class Node:
 		self.transactions[Tx[0]] = Tx
 
 		# Process the transaction
-		if not self.quiet:
-			print Tx[0]
+		logging.info("Process %s (%s)" % (Tx[0][:8], self.name))
+			
 		x = True
 		while(x):
 			x = self._process(Tx)
@@ -143,8 +143,9 @@ class Node:
 
 		if (idx in self.commit_yes or idx in self.commit_no):
 			# Do not process twice
-			if not self.quiet:
-				print "Pass already decided"
+			logging.info("Do nothing for %s (%s)" % (idx[:6], self.name))
+
+
 			return False # No further progress can be made
 
 		else:
@@ -156,8 +157,7 @@ class Node:
 				self.commit_no.add(idx)
 				self.on_commit( Tx, False )
 
-				if not self.quiet:
-					print "Add to no"
+				logging.info("Commit no for %s (%s)" % (idx[:6], self.name))
 				return False # there is no further work on this.
 
 			# If we cannot exclude it out of hand then we kick in
@@ -191,23 +191,20 @@ class Node:
 					#       Hm, actually we should not until it is confirmed.
 					# self.pending_available |= new_obj ## Add new transactions here
 
-					if not self.quiet:
-						print "Pending yes"
+					logging.info("Pending yes for %s (%s)" % (idx[:6], self.name))
 					return True
 
 				else:
 					# We cast a 'no' vote since there is a conflict in our
 					# history of transactions.
 					self.pending_vote[idx].add( (self.name, xdeps, False) )
-
 					self.on_vote( Tx, (self.name, xdeps, False) )
 
-					if not self.quiet:
-						print "Pending no"
+					logging.info("Pending no for %s (%s)" % (idx[:6], self.name))
 					return True
 			else:
-				if not self.quiet:
-					print "We know nothing about prerequisites. Continue ..."
+				logging.info("Unknown prerequisites for %s (%s)" % (idx[:6], self.name))
+
 				# We continue in case voting helps move things. This
 				# happens in case others know about this transaction.
 
@@ -232,8 +229,7 @@ class Node:
 				self.on_commit( Tx, True )
 
 				## CHECK CORRECT: Should I add the used transactions to self.pending_used?
-				if not self.quiet:
-					print "Commit yes"
+				logging.info("Commit yes for %s (%s)" % (idx[:6], self.name))
 				return False
 
 			if no_vote: #Counter(x for _,x in self.pending_vote[idx])[False] >= self.quorum:
@@ -243,92 +239,9 @@ class Node:
 				self.commit_no.add(idx)
 
 				self.on_commit( Tx, False )
-				if not self.quiet:
-					print "Commit no"
+				logging.info("Commit no for %s (%s)" % (idx[:6], self.name))
 				return False
 
 		return False # No further work
 
 
-class MockNode(Node):
-
-	def set_send(self, sender):
-		""" Set a custom network sender. """
-		self.send = sender
-
-	def receive(self, message):
-		""" How to process incoming messages. """
-
-		# Ignore messages we sent
-		if self.name == message["from"]:
-			return
-
-		tx = message['Tx']
-		idx, deps, new_obj, data = tx
-		if not tx == packageTx(data, deps, len(new_obj)):
-			raise Exception("Invalid transaction.")
-
-		if not self._within_TX(tx):
-			raise Exception("Transaction not of interest.")
-
-		if message['action'] == "vote":
-			vote = message['vote']
-			if vote not in self.pending_vote[tx[0]]:
-				self.pending_vote[tx[0]].add( vote )
-				self.process(tx)
-	
-		if message['action'] == "commit":
-			idx = tx[0]
-
-			# if not (idx in self.commit_yes or idx in self.commit_no):
-			#	self.process(tx)
-
-			if message["yesno"] == False:
-				self.commit_no.add(idx)
-			else:
-				self.do_commit_yes(tx)
-
-
-	def on_vote(self, full_tx, vote):
-		msg = { "action":"vote", "from":self.name, "Tx":full_tx, "vote":vote }
-		self.send(msg)
-
-
-	def on_commit(self, full_tx, yesno):
-		msg = { "action":"commit", "from":self.name, "Tx":full_tx, "yesno":yesno }
-		self.send(msg)
-
-
-def test_shard_many():
-	limits = sorted([hexlify(urandom(32)) for _ in range(100)])
-	limits = ["0" * 64] + limits + ["f" * 64]
-
-	_, _, [A, B, C], txdata = packageTx(data="data1", deps=[], num_out=3)
-
-	pre = [A, B, C]
-	nodes = [MockNode(pre, 1, name="n%s" % i, shard=[b0,b1]) for i, (b0, b1) in enumerate(zip(limits[:-1],limits[1:]))]
-
-	def send(msg):
-		print "Send: " + str(msg)
-		tx = msg["Tx"]
-		ns = [n for n in nodes if n._within_TX(tx)]
-		for n in ns:
-			n.receive(msg)
-
-	for n in nodes:
-		n.set_send(send)
-
-	T1 = packageTx("333", [A, B], 2)
-	T2 = packageTx("bbb", [A, C], 2)
-
-
-	n1 = [n for n in nodes if n._within_TX(T1)]
-	n2 = [n for n in nodes if n._within_TX(T2)]
-
-	# assert len(n1) == 3 and len(n2) == 3
-
-	for n in n1:
-		n.process(T1)
-
-	for n in n2:
-		n.process(T2)		

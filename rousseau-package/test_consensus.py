@@ -184,3 +184,84 @@ def test_shard_many():
 	for n in n2:
 		n.process(T2)		
 
+
+from MockConsensus import MockNode
+
+def test_mock_shard_many():
+	limits = sorted([hexlify(urandom(32)) for _ in range(100)])
+	limits = ["0" * 64] + limits + ["f" * 64]
+
+	_, _, [A, B, C], txdata = packageTx(data="data1", deps=[], num_out=3)
+
+	pre = [A, B, C]
+	nodes = [MockNode(pre, 1, name="n%s" % i, shard=[b0,b1]) for i, (b0, b1) in enumerate(zip(limits[:-1],limits[1:]))]
+
+	def send(msg):
+		# print "Send: " + str(msg)
+		tx = msg["Tx"]
+		ns = [n for n in nodes if n._within_TX(tx)]
+		for n in ns:
+			n.receive(msg)
+
+	for n in nodes:
+		n.set_send(send)
+
+	T1 = packageTx("333", [A, B], 2)
+	T2 = packageTx("bbb", [A, C], 2)
+
+	n1 = [n for n in nodes if n._within_TX(T1)]
+	n2 = [n for n in nodes if n._within_TX(T2)]
+
+	# assert len(n1) == 3 and len(n2) == 3
+
+	for n in n1:
+		n.process(T1)
+
+	for n in n2:
+		n.process(T2)		
+
+
+from RedisConsensus import RedisNode
+import logging
+
+def test_redis_consensus():
+    logging.getLogger().setLevel(logging.DEBUG)
+
+    _, _, [A, B, C], txdata = packageTx(data="data1", deps=[], num_out=3)
+
+    pre = [A, B, C]
+    node1 = RedisNode(pre, 2, name="n0")
+    node2 = RedisNode(pre, 2, name="n1")
+    node3 = RedisNode(pre, 2, name="n2")
+
+    T1 = packageTx("333", [A, B], 2)
+    T2 = packageTx("bbb", [A, C], 2)
+    
+    node1.process(T1)
+    node1.process(T2)
+
+def test_redis_shard_many():
+    limits = sorted([hexlify(urandom(32)) for _ in range(100)])
+    limits = ["0" * 64] + limits + ["f" * 64]
+
+    shard_map = []
+    for i, (b0, b1) in enumerate(zip(limits[:-1],limits[1:])):
+        shard_map.append((i, (b0, b1)))
+    shard_map = dict(shard_map)
+
+    _, _, [A, B, C], txdata = packageTx(data="data1", deps=[], num_out=3)
+
+    pre = [A, B, C]
+    nodes = [RedisNode(pre, 1, name="n%s" % i, shard=i, shard_map=shard_map) for i in shard_map]
+
+    T1 = packageTx("333", [A, B], 2)
+    T2 = packageTx("bbb", [A, C], 2)
+
+    n1 = [n for n in nodes if n._within_TX(T1)]
+    n2 = [n for n in nodes if n._within_TX(T2)]
+
+    for n in n1:
+        n.process(T1)
+
+    for n in n2:
+        n.process(T2)       
