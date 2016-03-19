@@ -15,16 +15,20 @@ def worker(q, bucket):
     while True:
         (key, value) = q.get()
         
-        if isinstance(value, Document):
-            bucket.put_object(Key="/Objects/%s" % key, ContentType="text/plain",
-                Body=value.item, Metadata={"type":"Document"})
+        try:
+            if isinstance(value, Document):
+                bucket.put_object(Key="/Objects/%s" % key, ContentType="text/plain",
+                    Body=value.item, Metadata={"type":"Document"})
 
-        if isinstance(value, Block):
-            encoded = dumps({"fingers":value.fingers, "items":value.items, "sequence": value.sequence})
-            bucket.put_object(Key="/Objects/%s" % key, ContentType="text/plain",
-                Body=encoded, Metadata={"type":"Block"})
+            if isinstance(value, Block):
+                encoded = dumps({"fingers":value.fingers, "items":value.items, "sequence": value.sequence})
+                bucket.put_object(Key="/Objects/%s" % key, ContentType="text/plain",
+                    Body=encoded, Metadata={"type":"Block"})
+        except Exception as e:
+            q.put((key, value))
 
-        q.task_done()
+        finally:
+            q.task_done()
 
 
 class S3Chain():
