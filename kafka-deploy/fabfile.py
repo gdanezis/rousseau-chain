@@ -56,7 +56,6 @@ def ec2freshstart():
 
 @runs_once
 def ec2start():
-    NUM_MACHINES = 1
     if len(all_machines) < NUM_MACHINES:
         missing = NUM_MACHINES - len(all_machines)
         instances = ec2.create_instances(
