@@ -7,6 +7,10 @@ from docker import Client
 cli = Client(base_url='unix://var/run/docker.sock', version="1.6.2")
 
 @task
+def build():
+	sh("sudo docker build -t my-python-app .")
+
+@task
 def start():
 	container = cli.create_container(
 		image='my-python-app',
