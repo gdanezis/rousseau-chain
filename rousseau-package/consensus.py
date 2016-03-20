@@ -175,6 +175,7 @@ class Node:
 
 
     def _check_invariant(self):
+        """ An internal debugging function to ensure all invariants hold. """
 
         all_objects = set(self.start)
         used_objects = set()
@@ -184,7 +185,6 @@ class Node:
             idx, deps, new_obj, data = self.cache[txa]
             all_objects |= set(o for o in new_obj if self._within_ID(o))
             used_objects |= set(o for o in deps if self._within_ID(o))
-
 
         assert all_objects == self.pending_available
         assert used_objects == self.commit_used
