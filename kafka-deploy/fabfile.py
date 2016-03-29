@@ -27,8 +27,11 @@ env.roledefs.update({
     'kafka': kafka_nodes
 })
 
-
-from config import *
+try:
+    from configx import *
+except:
+    print "Cannot import config.py -- ensure all config parameters are set, by copying config.py-sample."
+    sys.exit()
 
 @runs_once
 def ec2freshstart():
