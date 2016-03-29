@@ -127,12 +127,28 @@ def ec2makeami():
         )
 
 @roles("kafka")
+def config_kafka():
+    [_, host] = env.host_string.split("@")
+
+    # CONFIGURATION
+    # Set the external server address
+
+    try:
+        ret = run("grep '^advertised.host.name' etc/kafka/server.properties")
+    except:
+        run("echo 'advertised.host.name=%s\n' >>etc/kafka/server.properties" % host)
+
+
+@roles("kafka")
 def start_kafka():
     [_, host] = env.host_string.split("@")
 
     # CONFIGURATION
     # Set the external server address
-    # run("sed -i .bak 's/advertised.host.name=.*$/advertised.host.name=%s/' etc/kafka/server.properties" % host)
+    try:
+        ret = run("grep '^advertised.host.name' etc/kafka/server.properties")
+    except:
+        run("echo 'advertised.host.name=%s\n' >>etc/kafka/server.properties" % host)
 
     # Run Services
     run("./bin/zookeeper-server-start -daemon ./etc/kafka/zookeeper.properties", pty=False)
