@@ -28,7 +28,7 @@ env.roledefs.update({
 })
 
 try:
-    from configx import *
+    from config import *
 except:
     print "Cannot import config.py -- ensure all config parameters are set, by copying config.py-sample."
     sys.exit()
