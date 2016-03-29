@@ -1,7 +1,7 @@
 from fabric.api import run, env, cd, put, get, execute, require, sudo, local, lcd, settings
 from fabric.decorators import runs_once, roles, parallel
 
-
+import sys
 import time
 import re
 import boto3
@@ -28,12 +28,7 @@ env.roledefs.update({
 })
 
 
-
-NUM_MACHINES = 1
-SECURITY_GROUP = 'sg-ae5f0fcb'
-KEY_NAME = "petlibvm-ireland"
-
-LATEST_KAFKA_AMI = "ami-440a8f37"
+from config import *
 
 @runs_once
 def ec2freshstart():

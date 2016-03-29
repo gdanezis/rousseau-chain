@@ -1,0 +1,5 @@
+
+NUM_MACHINES = 1
+SECURITY_GROUP = 'sg-ae5f0fcb'
+KEY_NAME = "petlibvm-ireland"
+LATEST_KAFKA_AMI = "ami-440a8f37"
