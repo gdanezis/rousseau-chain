@@ -24,6 +24,14 @@ logging.basicConfig(
     level=logging.WARNING
 )
 
+def Tx2json(Tx):
+    fields = ["id", "depends_on", "creates", "contents"]
+    return dict(zip(fields, Tx))
+
+def json2Tx(jTx):
+    fields = ["id", "depends_on", "creates", "contents"]
+    return map(lambda k: jTx[k], fields)
+
 class Listener(Thread):
     """ Helper function that monitors a channel and fires receive events. """
     def __init__(self, node, channel):
@@ -111,7 +119,11 @@ class KafkaNode(Node):
             # Make sure some basic stuctures are here
             originator = message["from"]
             tx, action = message['Tx'], message['action']
-            idx, deps, new_obj, data = tx
+            try:
+               idx, deps, new_obj, data = tx
+            except:
+                tx = json2Tx(tx)
+                idx, deps, new_obj, data = tx
 
         except Exception as e:
             raise Exception("Badly formatted messages: %s" % str(e))
@@ -121,6 +133,7 @@ class KafkaNode(Node):
             return
         
         if not idx == packageTx(data, deps, len(new_obj))[0]:
+            # TODO: Checker goes here.
             raise Exception("Invalid transaction.")
 
         if not self._within_TX(tx):
@@ -144,9 +157,10 @@ class KafkaNode(Node):
     
         if action == "commit":
             # We process an incoming commit.
-            yesno = message['yesno']
+            yesno = message['accept']
             self.RLogger.info("Receive commit (%s) for %s (%s)" % (yesno ,idx[:6], self.name))
 
+            ## TODO: call chainer.
             if yesno:
                 self.do_commit_yes(tx)
             else:
@@ -163,7 +177,7 @@ class KafkaNode(Node):
 
 
     def on_commit(self, full_tx, yesno):
-        msg = dumps({ "action":"commit", "from":self.name, "Tx":full_tx, "yesno":yesno })
+        msg = dumps({ "action":"commit", "from":self.name, "Tx":Tx2json(full_tx), "accept":yesno })
         self.send(full_tx, msg)
 
 
@@ -193,27 +207,40 @@ def test_single():
         del kn
         print "Clean exit ..."
 
+
 if __name__ == "__main__":
     # bin/kafka-console-consumer --zookeeper localhost:2181 --topic votes0 --from-beginning
 
     host = "ec2-54-194-146-93.eu-west-1.compute.amazonaws.com"
     port = 9092
 
-    shard_map = make_shard_map(10)
-    print shard_map
-    rnd = hexlify(urandom(16))
-    
-    nodes = [KafkaNode(quorum=1, name="n%s" % i, shard=i, shard_map=shard_map, host=host, port=port) for i in shard_map]
+    shard_map = make_shard_map(10)    
+    nodes = [ KafkaNode(quorum=1, name="n%s" % i, 
+                shard=i, shard_map=shard_map, host=host, port=port) 
+                for i in shard_map ]
 
-    T0 = packageTx(data="data1-%s" % rnd, deps=[], num_out=3)
-    _, _, [A, B, C], txdata = T0
+    def concerned(tx):
+        l = []
+        for i in shard_map:
+            (b0, b1) = shard_map[i]
+            if within_TX(tx, b0, b1):
+                l.append(i)
+        return l
 
-    T1 = packageTx("333-%s" % rnd, [A, B], 2)
-    T2 = packageTx("bbb-%s" % rnd, [A, C], 2)
+    T0s = []
+    for _ in range(100):
+        rnd = hexlify(urandom(16))
+        T0 = packageTx(data="data1-%s" % rnd, deps=[], num_out=3)
+        T0s.append(T0)
 
-    P = lambda T: dumps({ "action":"process", "from":"ext", "Tx":T })
+        # _, _, [A, B, C], txdata = T0
+        # T1 = packageTx("333-%s" % rnd, [A, B], 2)
+        # T2 = packageTx("bbb-%s" % rnd, [A, C], 2)
 
-    nodes[0].receive( P(T0) )
+        P = lambda T: dumps({ "action":"process", "from":"ext", "Tx":T })
+        print "T0 depends on: %s" % str(concerned(T0))     
+
+        nodes[0].receive( P(T0) )
 
     # Relevent Nodes
     # r1nodes = [n for n in nodes if n._within_TX(T1)]
@@ -237,7 +264,7 @@ if __name__ == "__main__":
 
     try:
         while True:
-            time.sleep(1.0)
+            time.sleep(0.1)
     except KeyboardInterrupt:
         # del kn
         print "Clean exit ..."
