@@ -67,7 +67,7 @@ class KafkaNode(Node):
         self.channel_name = None
 
         self.kafka = KafkaClient('%s:%s' % (host,port)) # redis.StrictRedis(host, port, db)
-        self.producer = SimpleProducer(self.kafka, async=True)
+        self.producer = SimpleProducer(self.kafka)
 
         self.shard_id = shard
         self.shard_map = shard_map
@@ -119,11 +119,9 @@ class KafkaNode(Node):
             # Make sure some basic stuctures are here
             originator = message["from"]
             tx, action = message['Tx'], message['action']
-            try:
-               idx, deps, new_obj, data = tx
-            except:
-                tx = json2Tx(tx)
-                idx, deps, new_obj, data = tx
+            
+            tx = json2Tx(tx)
+            idx, deps, new_obj, data = tx
 
         except Exception as e:
             raise Exception("Badly formatted messages: %s" % str(e))
@@ -139,7 +137,7 @@ class KafkaNode(Node):
         if not self._within_TX(tx):
             if action == "process":
                 # We are going to re-route the message on a correct channel
-                msg = dumps({ "action":"process", "from":self.name, "Tx":tx })
+                msg = dumps({ "action":"process", "from":self.name, "Tx":Tx2json(tx) })
                 self.send(tx, msg)
                 return
             else:
@@ -172,7 +170,7 @@ class KafkaNode(Node):
 
 
     def on_vote(self, full_tx, vote):
-        msg = dumps({ "action":"vote", "from":self.name, "Tx":full_tx, "vote":vote })
+        msg = dumps({ "action":"vote", "from":self.name, "Tx":Tx2json(full_tx), "vote":vote })
         self.send(full_tx, msg)
 
 
@@ -189,13 +187,13 @@ def test_single():
     T0 = packageTx(data="data1,%s" % rnd, deps=[], num_out=3)
     _, _, [A, B, C], txdata = T0
 
-    T0_json = dumps({ "action":"process", "from":"ext", "Tx":T0 })
+    T0_json = dumps({ "action":"process", "from":"ext", "Tx":Tx2json(T0) })
     kn.send(T0, T0_json)
 
     T1 = packageTx("333,%s" % rnd, [A, B], 2)
     T2 = packageTx("bbb,%s" % rnd, [A, C], 2)
-    T1_json = dumps({ "action":"process", "from":"ext", "Tx":T1 })
-    T2_json = dumps({ "action":"process", "from":"ext", "Tx":T2 })
+    T1_json = dumps({ "action":"process", "from":"ext", "Tx":Tx2json(T1) })
+    T2_json = dumps({ "action":"process", "from":"ext", "Tx":Tx2json(T2) })
 
     kn.send(T1, T1_json)
     kn.send(T2, T2_json)
@@ -237,7 +235,7 @@ if __name__ == "__main__":
         # T1 = packageTx("333-%s" % rnd, [A, B], 2)
         # T2 = packageTx("bbb-%s" % rnd, [A, C], 2)
 
-        P = lambda T: dumps({ "action":"process", "from":"ext", "Tx":T })
+        P = lambda T: dumps({ "action":"process", "from":"ext", "Tx":Tx2json(T) })
         print "T0 depends on: %s" % str(concerned(T0))     
 
         nodes[0].receive( P(T0) )
