@@ -18,7 +18,7 @@ def make_shard_map(num = 100):
     limits = []
     MAX = 2**16
 
-    for l in range(0, MAX - 1, MAX / 100):
+    for l in range(0, MAX - 1, MAX / num):
         l_lower = hexlify(pack(">H", l)) + ("00" * 20)
         limits.append(l_lower)
 

@@ -12,7 +12,7 @@ from struct import pack
 from json import loads, dumps
 from threading import Thread
 
-from consensus import Node, packageTx, within_TX
+from consensus import Node, packageTx, within_TX, make_shard_map
 # import redis
 
 # from kafka import SimpleProducer, KafkaClient
@@ -35,7 +35,7 @@ class Listener(Thread):
     
     def work(self, item):
         try:
-            print "Process:", item
+            print "Process (%s): %s" % (self.node.name, item)
             self.node.receive(item)
         except Exception as e:
             self.node.RLogger.info("Message Error: %s" % str(e))
@@ -56,6 +56,7 @@ class KafkaNode(Node):
             shard=None, shard_map=None,
             host='localhost', port=9092):
         self.client = None
+        self.channel_name = None
 
         self.kafka = KafkaClient('%s:%s' % (host,port)) # redis.StrictRedis(host, port, db)
         self.producer = SimpleProducer(self.kafka, async=True)
@@ -67,9 +68,13 @@ class KafkaNode(Node):
         if shard is not None:
             assert shard in shard_map
             shard = shard_map[shard]
-            self.client = Listener(self, 'votes:%s' % self.shard_id)
+
+            self.channel_name = 'votes%s' % self.shard_id
+            self.client = Listener(self, self.channel_name)
+            print "Listen on: %s" % self.channel_name
         else:
-            self.client = Listener(self, 'votes')
+            self.channel_name = 'votes'
+            self.client = Listener(self, self.channel_name)
 
         # Initialize the node for consensus.
         Node.__init__(self, start, quorum, name, shard)
@@ -91,7 +96,8 @@ class KafkaNode(Node):
                 (b0, b1) = self.shard_map[i]
                 if within_TX(tx, b0, b1):
                     # self.r.publish('votes:%s' % i , msg)
-                    self.producer.send_messages('votes:%s' % i , msg)
+                    print "Send to: %s " % ('votes%s' % i)
+                    self.producer.send_messages('votes%s' % i , msg)
         else:
             self.producer.send_messages('votes' , msg)
 
@@ -161,10 +167,8 @@ class KafkaNode(Node):
         self.send(full_tx, msg)
 
 
-if __name__ == "__main__":
-    host = "ec2-54-171-154-70.eu-west-1.compute.amazonaws.com"
-    port = 9092
 
+def test_single():
     kn = KafkaNode(name="node", host=host, port=port)
 
     rnd = hexlify(urandom(16))
@@ -187,4 +191,53 @@ if __name__ == "__main__":
             time.sleep(1.0)
     except KeyboardInterrupt:
         del kn
+        print "Clean exit ..."
+
+if __name__ == "__main__":
+    # bin/kafka-console-consumer --zookeeper localhost:2181 --topic votes0 --from-beginning
+
+    host = "ec2-54-194-146-93.eu-west-1.compute.amazonaws.com"
+    port = 9092
+
+    shard_map = make_shard_map(10)
+    print shard_map
+    rnd = hexlify(urandom(16))
+    
+    nodes = [KafkaNode(quorum=1, name="n%s" % i, shard=i, shard_map=shard_map, host=host, port=port) for i in shard_map]
+
+    T0 = packageTx(data="data1-%s" % rnd, deps=[], num_out=3)
+    _, _, [A, B, C], txdata = T0
+
+    T1 = packageTx("333-%s" % rnd, [A, B], 2)
+    T2 = packageTx("bbb-%s" % rnd, [A, C], 2)
+
+    P = lambda T: dumps({ "action":"process", "from":"ext", "Tx":T })
+
+    nodes[0].receive( P(T0) )
+
+    # Relevent Nodes
+    # r1nodes = [n for n in nodes if n._within_TX(T1)]
+    # r1nodes[0].process(T1)
+
+    # Relevent Nodes
+    # r2nodes = [n for n in nodes if n._within_TX(T2)]
+    # r2nodes[0].process(T2)
+
+    # def test_condition():
+    #    Good = True
+    #    Good &= T1[0] in r1nodes[-1].commit_yes
+    #    Good &= T1[0] in r1nodes[0].commit_yes
+    #    Good &= T2[0] in r2nodes[-1].commit_no
+    #    Good &= T2[0] in r2nodes[0].commit_no
+    #    assert Good
+    #    print "All: %s" % Good
+
+    # t = xTimer(3.0, test_condition)
+    # t.start()
+
+    try:
+        while True:
+            time.sleep(1.0)
+    except KeyboardInterrupt:
+        # del kn
         print "Clean exit ..."
