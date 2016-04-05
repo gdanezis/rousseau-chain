@@ -47,7 +47,7 @@ OCONCERNS(selfx, res, TTT) == \E d \in TTT[res].dep \cup TTT[res].new: CONCERNS(
   {
     c_start:+ await (proc_chan # {});
     c_loop:+ while ({p \in proc_chan: (p[2] \notin accepted[self] \cup rejected[self]) 
-                    /\  TTT[p[2]].dep \subseteq exist_resources} # {})
+                    /\  TTT[p[2]].dep \subseteq exist_resources } # {})
                     (* /\ OCONCERNS(self, p[2], TTT)} # {}) *)
     {
     
@@ -115,8 +115,8 @@ OCONCERNS(selfx, res, TTT) == \E d \in TTT[res].dep \cup TTT[res].new: CONCERNS(
             };
 
             (* // Do the committing of the transactions. *)        
-            with(active_commit = {p \in commit_chan: p[2] \notin accepted[self] \cup rejected[self]})
-                    (* /\ OCONCERNS(self, p[2], TTT)}) *)
+            with(active_commit = {p \in commit_chan: p[2] \notin accepted[self] \cup rejected[self] (* }) *)
+                    /\ OCONCERNS(self, p[2], TTT)})
             if (active_commit # {}) with(m \in active_commit)
             {                                                            
                 if (<<"commit", m[2], "yes">> \in commit_chan){                            
@@ -141,8 +141,7 @@ OCONCERNS(selfx, res, TTT) == \E d \in TTT[res].dep \cup TTT[res].new: CONCERNS(
     (* As much progress as possible was made *)
     assert accepted[self] \cup rejected[self] = {t \in (DOMAIN TTT) : 
                                                   TTT[t].dep \subseteq exist_resources };                                                 
-                                                  (* /\ OCONCERNS(self, t, TTT) } ; *)    
-    
+                                                  (* /\ OCONCERNS(self, t, TTT) } ; *) 
     (* At least one transaction was accepted. *)
     (*
     assert accepted[self] # {}; *)       
@@ -194,7 +193,7 @@ c_start(self) == /\ pc[self] = "c_start"
 
 c_loop(self) == /\ pc[self] = "c_loop"
                 /\ IF {p \in proc_chan: (p[2] \notin accepted[self] \cup rejected[self])
-                      /\  TTT[p[2]].dep \subseteq exist_resources} # {}
+                      /\  TTT[p[2]].dep \subseteq exist_resources } # {}
                       THEN /\ LET proc_node == {p \in proc_chan:
                                                   p[2] \notin accepted[self] \cup rejected[self]
                                                   /\ TCONCERNS(self, p[2], TTT)} IN
@@ -248,7 +247,8 @@ c_loop(self) == /\ pc[self] = "c_loop"
                                                                     /\ UNCHANGED commit_chan
                                    ELSE /\ TRUE
                                         /\ UNCHANGED commit_chan
-                           /\ LET active_commit == {p \in commit_chan': p[2] \notin accepted[self] \cup rejected[self]} IN
+                           /\ LET active_commit ==              {p \in commit_chan': p[2] \notin accepted[self] \cup rejected[self]
+                                                   /\ OCONCERNS(self, p[2], TTT)} IN
                                 IF active_commit # {}
                                    THEN /\ \E m \in active_commit:
                                              /\ IF <<"commit", m[2], "yes">> \in commit_chan'
@@ -294,18 +294,30 @@ Termination == <>(\A self \in ProcSet: pc[self] = "Done")
 \* END TRANSLATION
 
 (* Completeness == <>(\A selfx \in shards: accepted[selfx] \cup rejected[selfx] = DOMAIN TTT ) *)
-UN(set_list, selfi, Tx) == { t \in UNION { set_list[u] : u \in DOMAIN set_list }: OCONCERNS(selfi, t, Tx) }
 
+(* Consensus == <>(\A self1 \in shards: \A self2 \in shards: (accepted[self1] = accepted[self2] 
+                /\ rejected[self1] = rejected[self2] /\ accepted[self1] # rejected[self2]))
+
+*)
+
+(* Key temporal formulas *)
+
+(* Helpful definitions / functions *)
+UN(set_list, selfi, Tx) == { t \in UNION { set_list[u] : u \in DOMAIN set_list }: OCONCERNS(selfi, t, Tx) }
+ALLT(acc, rej) == UNION ({acc[s]: s \in DOMAIN acc} \cup {rej[s]: s \in DOMAIN rej})
+ALLACC(acc) == UNION ({acc[s]: s \in DOMAIN acc})
+
+(* All shards learn about the accepted and rejected facts that concern them. *)
 ConsensusX == <>(\A selfi \in shards: accepted[selfi] = UN(accepted, selfi, TTT) 
                                      /\ rejected[selfi] = UN(rejected, selfi, TTT) )
 
-Consensus == <>(\A self1 \in shards: \A self2 \in shards: (accepted[self1] = accepted[self2] 
-                /\ rejected[self1] = rejected[self2] /\ accepted[self1] # rejected[self2]))
+(* Ensure that when transactions are not processed, it is because some inputs are unknown. *)
+UnknownNotProcessed == <>(\A p \in proc_chan: p[2] \notin ALLT(accepted, rejected) => TTT[p[2]].dep \ exist_resources # {})
 
-
-
+(* Ensure that at least some transactions were processed, thus progress was made. *)
+SomeProgress == <>(ALLACC(accepted) # {})
 
 =============================================================================
 \* Modification History
-\* Last modified Tue Apr 05 00:55:01 BST 2016 by george
+\* Last modified Tue Apr 05 23:57:22 BST 2016 by george
 \* Created Fri Apr 01 23:45:07 BST 2016 by george
