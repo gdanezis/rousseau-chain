@@ -28,6 +28,20 @@ class AdvancedNode():
         ## ---
         self.out = []
 
+    def print_state(self):
+        print "=" * 40
+        print "Name: %s" % self.name
+        for t in sorted(self.votes):
+            print t, list( (v.node, v.decision) for v in self.votes[t] )
+        print "-" * 40
+        print "Acc: ", self.accepted
+        print "Rej: ", self.rejected
+        print "-" * 40
+        print "Obj:", self.resources
+        print "Used:", self.used()
+
+
+
     def namespace(self):
         return self.shard_name[self.name].namespace
 
@@ -108,6 +122,7 @@ class AdvancedNode():
                                   node = self.name,
                                   decision = decision))
 
+            self.votes[msg.tx.idx] |= votes 
             self.my_votes |= votes
             self.send(votes)
             return True, "Voted"
@@ -169,9 +184,6 @@ class AdvancedNode():
             else:
                 shard_decisions[ns] = None
 
-        if None in shard_decisions.values():
-            return True, "No Decision Reached"
-
         # namedtuple("CommitMsg", ["type", "tx", "node", "decision"])
 
         if False in shard_decisions.values():
@@ -183,6 +195,9 @@ class AdvancedNode():
             self.send(set([commit]))
 
             return True, "Rejected Tx: %s" % msg.tx.idx
+
+        if None in shard_decisions.values():
+            return True, "No Decision Reached"
 
         if all(shard_decisions.values()):
             commit = CommitMsg(type = "Commit",
@@ -238,6 +253,9 @@ class Transaction:
     def deps_by_namespace(self, nsp):
         return { d for d in self.deps if d[0] == nsp }
 
+    def __repr__(self):
+        return "Tx(%s)" % self.idx
+
 
 Shard = namedtuple("Shard", ["name", "namespace"])
 def test_process():
@@ -276,12 +294,22 @@ def test_process():
     assert ("a", "ID3") not in nodeA.resources
 
 
-def run(xbuffer, runnable):
+def run(trans, runnable):
     from random import choice
     steps = 0
     results = set()
+    active = set()
+    for n, _ in runnable:
+        active |= n.resources
+
+    xbuffer = []
     while steps < 1000:
-        steps +=1
+        new_trans = set()
+        for T in trans:
+            if T.deps <= active and ProcessMsg("Process", T) not in xbuffer:
+                xbuffer += [ProcessMsg("Process", T)]
+
+        steps += 1
         msg = choice(xbuffer)
         node, proc = choice(runnable)
 
@@ -290,6 +318,10 @@ def run(xbuffer, runnable):
         if r not in results:
             print steps, r
             results.add(r)
+
+        for msg in node.out:
+            if msg.type == "Commit" and msg.decision:
+                active |= msg.tx.news
 
         xbuffer += node.out
 
@@ -313,7 +345,7 @@ def test_many():
     T1 = Transaction("T1", "T1 Data", [("a", "ID1")], [("a", "ID2")])
     T2 = Transaction("T2", "T2 Data", [("a", "ID1")], [("a", "ID3")])
     
-    xbuffer = [ProcessMsg("Process",T1), ProcessMsg("Process",T2)]
+    xbuffer = [T1, T2]
     runnable = [(nodeA, nodeA.do_all)]
 
     run(xbuffer, runnable)
@@ -341,7 +373,44 @@ def test_many_shards():
     T1 = Transaction("T1", "T1 Data", [("a", "ID1"), ("b", "IDb")], [("a", "ID2")])
     T2 = Transaction("T2", "T2 Data", [("b", "IDb")], [("b", "ID3")])
     
-    xbuffer = [ProcessMsg("Process",T1), ProcessMsg("Process",T2)]
+    xbuffer = [T1, T2]
     runnable = [(nodeA, nodeA.do_all), (nodeB, nodeB.do_all), (nodeC, nodeC.do_all), (nodeD, nodeD.do_all)]
 
     run(xbuffer, runnable)
+
+def test_classic4():
+    shards = {
+        "A": Shard("A","a", ),
+        "B": Shard("B","b", ),
+        "C": Shard("C","c", ),
+    }
+
+    nodeA = AdvancedNode("A", shards)
+    nodeB = AdvancedNode("B", shards)
+    nodeC = AdvancedNode("C", shards)
+
+    nodeA.resources |= set([("a", "IDa")])
+    nodeB.resources |= set([("b", "IDb")])
+    nodeC.resources |= set([("c", "IDc")])
+
+    # T0 = Transaction("T0", "T0 Data", [], [("a", "ID2")])
+    T1 = Transaction("T1", "T1 Data", [("a", "IDa"), ("b", "IDb")], [("a", "IDa2")])
+    T2 = Transaction("T2", "T2 Data", [("b", "IDb"), ("c", "IDc")], [("b", "IDb2")])
+    T3 = Transaction("T3", "T3 Data", [("a", "IDa"), ("b", "IDb2")], [("c", "IDc3")])
+    T4 = Transaction("T4", "T4 Data", [("c", "IDc"), ("a", "IDa2")], [("c", "IDc4")])
+
+    xbuffer = [T1, T2, T3, T4]
+    runnable = [(nodeA, nodeA.do_all), (nodeB, nodeB.do_all), (nodeC, nodeC.do_all)]
+
+    run(xbuffer, runnable)
+
+
+    def print_votes(name, votes):
+        print "%s:" % name
+        for t in sorted(votes):
+            print t, list( (v.node, v.decision) for v in votes[t] )
+
+    nodeA.print_state()
+    nodeB.print_state()
+    nodeC.print_state()
+    
