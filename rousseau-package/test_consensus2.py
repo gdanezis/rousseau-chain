@@ -123,6 +123,9 @@ def test_many_shards():
     run(xbuffer, runnable)
 
 def test_classic4():
+    import logging
+    logging.basicConfig(level=logging.DEBUG)
+
     shards = {
         "A": Shard("A","a", ),
         "B": Shard("B","b", ),
@@ -148,12 +151,6 @@ def test_classic4():
 
     run(xbuffer, runnable)
 
-    def print_votes(name, votes):
-        print "%s:" % name
-        for t in sorted(votes):
-            print t, list( (v.node, v.decision) for v in votes[t] )
-
     nodeA.print_state()
     nodeB.print_state()
     nodeC.print_state()
-    

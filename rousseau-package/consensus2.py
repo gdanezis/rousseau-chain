@@ -2,6 +2,7 @@
 #  in rousseau-chain/TLAproof/rousseau.tla
 
 from collections import namedtuple, defaultdict, Counter
+from logging import getLogger
 
 # Define the types of Messages, Process, Vote, and Commit
 ProcessMsg = namedtuple("ProcessMsg", ["type", "tx"])
@@ -11,21 +12,31 @@ CommitMsg = namedtuple("CommitMsg", ["type", "tx", "node", "decision"])
 # Define what makes a shard
 Shard = namedtuple("Shard", ["name", "namespace"])
 
-class AdvancedNode():
+class AdvancedNode(object):
     def __init__(self, name, shard_map):
+        """ Initialize with a name and a map of the shards, by name. """
+
+        # Some basic checks on the shards
+        assert name in shard_map
+        assert type(shard_map) == dict
+        assert all(type(v) == Shard for v in shard_map.values())
+
+        # Local Parameters
         self.name = name
         self.shard_name = shard_map
+        self.logger = getLogger()
 
         # Stores 
         self.transactions = {}
-        self.votes = defaultdict(set)
 
+        # These, we need to remember
+        self.my_votes = set()
+
+        # Other Storess
+        self.votes = defaultdict(set)
         self.accepted = set()
         self.rejected = set()
         self.resources = set()
-
-        self.my_votes = set()
-
 
     def print_state(self):
         x = "=" * 20
@@ -42,9 +53,11 @@ class AdvancedNode():
 
 
     def namespace(self):
+        """ Returns the the namespace managed by this node. """
         return self.shard_name[self.name].namespace
 
     def already_voted_all(self, tx):
+        """ Tests whether we have cast a vote for a Transaction ID. """
         for v in self.votes[tx.idx]:
             if self.name == v.node:
                 return True
@@ -69,12 +82,13 @@ class AdvancedNode():
 
 
     def do_return(self, consume=True, log='', messages=[]):
+        """ Mediates the results of processing a message."""
+        self.logger.info("%s: %s" % (self.name, log))
         return (consume, log, messages)
 
 
     def do_all(self, msg):
         """ Selects the appropriate procedure to process and incoming message. """
-
         messages = [msg]
         to_send = set()
         to_repeat = set()
@@ -101,7 +115,7 @@ class AdvancedNode():
 
 
     def do_process(self, msg):
-        """ Deal with a 'Process' message """
+        """ Deal with a 'Process' message. """
 
         if msg.type != "Process":
             return self.do_return(log="Incorrect type: %s" % msg.type)
@@ -150,6 +164,7 @@ class AdvancedNode():
                                     
 
     def do_vote(self, msg):
+        """ Deal with a 'Vote' message. """
 
         if msg.type != "Vote":
             return self.do_return(log="Incorrect type: %s" % msg.type)
@@ -185,12 +200,14 @@ class AdvancedNode():
             if (vote.node, vote.shard) in voters and voters[(vote.node, vote.shard)] == None:
                 voters[(vote.node, vote.shard)] = vote.decision
 
+        # Compile the number of voters and votes per shard
         tally = defaultdict(Counter)
         total = defaultdict(int)
         for (node, shard), decision in voters.items():
             total[shard] += 1
             tally[shard].update([decision])
 
+        # Computes the decision for each shard.
         shard_decisions = {}
         for ns in all_namespaces:
             if tally[ns][True] > total[ns] / 2:
@@ -200,6 +217,7 @@ class AdvancedNode():
             else:
                 shard_decisions[ns] = None
 
+        # Even a single confirmed False kills this transaction.
         if False in shard_decisions.values():
             commit = CommitMsg(type = "Commit",
                                   tx = msg.tx,
@@ -209,9 +227,11 @@ class AdvancedNode():
             return self.do_return(log="Rejected Tx: %s" % msg.tx.idx,
                                   messages=set([commit]))
 
+        # If some input is unknonw wait on this transaction
         if None in shard_decisions.values():
             return self.do_return(log="No Decision Reached")
 
+        # If all are True then accept this Transaction.
         if all(shard_decisions.values()):
             commit = CommitMsg(type = "Commit",
                                   tx = msg.tx,
@@ -222,6 +242,7 @@ class AdvancedNode():
                                   messages = set([commit]) )
 
     def do_commit(self, msg):
+        """ Deal with a 'Commit' message """
 
         if msg.type != "Commit":
             return self.do_return(log="Incorrect type: %s" % msg.type)
@@ -246,24 +267,28 @@ class AdvancedNode():
             return self.do_return(log="Commit No: %s" % msg.tx.idx)
         
 
-class Transaction:
+class Transaction(object):
     def __init__(self, idx, data, deps, news):
+        """ Initialize the transactions """
         self.idx = idx
         self.data = data
         self.deps = set(deps)
         self.news = set(news)
 
     def namespaces(self):
+        """ Extract the namespaces concerned with this Transaction. """
         return { namespace for namespace, objectID in self.deps | self.news }
 
     def dep_namespaces(self):
+        """ Extract the namespaces related to the dependencies. """
         return { namespace for namespace, objectID in self.deps }
 
-
     def deps_by_namespace(self, nsp):
+        """ Return the dependencies related to a namespace. """
         return { d for d in self.deps if d[0] == nsp }
 
     def __repr__(self):
+        """ A string representation of the Transaction. """
         return "Tx(%s)" % self.idx
 
 
