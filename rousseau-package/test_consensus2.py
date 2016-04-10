@@ -89,6 +89,11 @@ def test_many():
     T1 = Transaction("T1", "T1 Data", [("a", "ID1")], [("a", "ID2")])
     T2 = Transaction("T2", "T2 Data", [("a", "ID1")], [("a", "ID3")])
     
+    Td = T1.to_dict()
+    Tp = Transaction.from_dict(Td)
+    assert T1 == Tp
+    assert not T2 == Tp
+
     xbuffer = [T1, T2]
     runnable = [(nodeA, nodeA.do_all)]
 
@@ -123,8 +128,8 @@ def test_many_shards():
     run(xbuffer, runnable)
 
 def test_classic4():
-    import logging
-    logging.basicConfig(level=logging.DEBUG)
+    # import logging
+    # logging.basicConfig(level=logging.DEBUG)
 
     shards = {
         "A": Shard("A","a", ),

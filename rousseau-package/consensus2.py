@@ -291,4 +291,19 @@ class Transaction(object):
         """ A string representation of the Transaction. """
         return "Tx(%s)" % self.idx
 
+    def __eq__(self, other):
+        """ Tests for equality. """
+        return self.idx == other.idx and \
+               self.data == other.data and \
+               self.deps == other.deps and \
+               self.news == other.news
 
+    def to_dict(self):
+        return {"idx": self.idx, 
+                "data": self.data,
+                "deps": list(self.deps),
+                "news": list(self.news)}
+    
+    @staticmethod
+    def from_dict(d):
+        return Transaction(d["idx"], d["data"], set(d["deps"]), set(d["news"]))
