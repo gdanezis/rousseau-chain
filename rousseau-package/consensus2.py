@@ -20,26 +20,23 @@ class AdvancedNode():
 
         self.accepted = set()
         self.rejected = set()
-        # self.exist_resources = set()
         self.resources = set()
 
         self.my_votes = set()
 
-        ## ---
-        self.out = []
 
     def print_state(self):
-        print "=" * 40
-        print "Name: %s" % self.name
+        x = "=" * 20
+        print "%s Name: %s %s" % (x, self.name, x)
         for t in sorted(self.votes):
             print t, list( (v.node, v.decision) for v in self.votes[t] )
-        print "-" * 40
+        print "-" * (48 + len(self.name))
         print "Acc: ", self.accepted
         print "Rej: ", self.rejected
-        print "-" * 40
+        print "-" * (48 + len(self.name))
         print "Obj:", self.resources
         print "Used:", self.used()
-
+        print "-" * (48 + len(self.name))
 
 
     def namespace(self):
@@ -49,64 +46,78 @@ class AdvancedNode():
         for v in self.votes[tx.idx]:
             if self.name == v.node:
                 return True
-
         return False
 
     def used(self):
-        # with(good_votes = {v 
-        #    \in votes[self] : (\A iacc \in accepted[self]: 
-        #      v # iacc => TTT[v].dep \intersect TTT[iacc].dep = {})}) 
-        # with(used = UNION { TTT[f0].dep: 
-        #       f0 \in (accepted[self] \cup ( good_votes \ rejected[self]))}){
-        # if (TTT[m[2]].dep \intersect resources[self] # {}){
-
+        """ Defines which Object IDs are considered as used. """
         good_tx = {}
         used_obj = set()
         for tx_idx in self.accepted:
             used_obj |= self.transactions[tx_idx].deps
-
 
         still_valid_votes = { v.tx.idx for v in self.my_votes \
                     if v.decision and \
                         v.tx.deps & used_obj == set() and \
                         v.tx.idx not in self.rejected }
 
-        used_obj = set()
-        for v_idx in self.accepted.union(still_valid_votes):
-            used_obj |= self.transactions[v_idx].deps
+        for v_idx in still_valid_votes:
+            used_obj |= { d for d in self.transactions[v_idx].deps if d[0] == self.namespace() }
 
         return used_obj
 
 
+    def do_return(self, consume=True, log='', messages=[]):
+        return (consume, log, messages)
+
+
     def do_all(self, msg):
-        if msg.type == "Process":
-            return self.do_process(msg)
-        elif msg.type == "Vote":
-            return self.do_vote(msg)
-        elif msg.type == "Commit":
-            return self.do_commit(msg)
-        else:
-            return False, "Unknown type: %s" % (msg.type)
+        """ Selects the appropriate procedure to process and incoming message. """
+
+        messages = [msg]
+        to_send = set()
+        to_repeat = set()
+        all_logs = []
+        while len(messages) > 0:
+            m_i = messages.pop()
+
+            if m_i.type == "Process":
+                status, logs, out = self.do_process(m_i)
+            elif m_i.type == "Vote":
+                status, logs, out = self.do_vote(m_i)                
+            elif m_i.type == "Commit":
+                status, logs, out = self.do_commit(m_i)                
+            else:
+                assert False
+
+            all_logs += [logs]
+            to_send |= set(out)
+            messages += list(out)
+            if not status:
+                to_repeat |= set([m_i])
+
+        return to_send, to_repeat, all_logs
+
 
     def do_process(self, msg):
+        """ Deal with a 'Process' message """
 
         if msg.type != "Process":
-            return True, "Incorrect type: %s" % msg.type
+            return self.do_return(log="Incorrect type: %s" % msg.type)
 
         if msg.tx.idx not in self.transactions:
             self.transactions[msg.tx.idx] = msg.tx
         
         ## If it is not within our namespace no need to process
         if self.namespace() not in msg.tx.namespaces():
-            return True, "Not in NS"
+            return self.do_return(log="Not in NS")
 
         ## Check it is not already processed
         if msg.tx.idx in self.accepted or msg.tx.idx in self.rejected:
-            return True, "Already Committed: %s" % msg.tx.idx
+            return self.do_return(log="Already Committed: %s" % msg.tx.idx)
 
         ## Process only once
         if self.already_voted_all(msg.tx):
-            return True, "Already votes"
+            return self.do_return(log="Already votes")
 
         # Which dependencies are local?
         local_deps = msg.tx.deps_by_namespace(self.namespace())
@@ -122,32 +133,35 @@ class AdvancedNode():
                                   node = self.name,
                                   decision = decision))
 
+                if not decision:
+                    print "="*20, self.name, "="*20
+                    print "deps:", msg.tx.deps
+                    print "used:",self.used()
+
+
             self.votes[msg.tx.idx] |= votes 
             self.my_votes |= votes
-            self.send(votes)
-            return True, "Voted"
+            return self.do_return(log="Voted", messages=votes)
         else:
-            return False, "Unknown Dependencies: %s" % (local_deps - self.resources) 
+            err = "Unknown Dependencies: %s" % (local_deps - self.resources)
+            return self.do_return(consume=False, log=err) 
                                     
-        return True, "End of func"
 
     def do_vote(self, msg):
 
         if msg.type != "Vote":
-            return True, "Incorrect type: %s" % msg.type
+            return self.do_return(log="Incorrect type: %s" % msg.type)
 
         if msg.tx.idx not in self.transactions:
             self.transactions[msg.tx.idx] = msg.tx
         
         ## If it is not within our namespace no need to process
         if self.namespace() not in msg.tx.namespaces():
-            return True, "Not in NS"
+            return self.do_return(log="Not in NS")
 
         ## Check it is not already processed
         if msg.tx.idx in self.accepted or msg.tx.idx in self.rejected:
-            return True, "Already Committed: %s" % msg.tx.idx
-
-        # namedtuple("VoteMsg", ["type", "tx", "shard", "node", "decision"])
+            return self.do_return(log="Already Committed: %s" % msg.tx.idx)
 
         # Do the tally
         all_namespaces = msg.tx.dep_namespaces()
@@ -184,20 +198,17 @@ class AdvancedNode():
             else:
                 shard_decisions[ns] = None
 
-        # namedtuple("CommitMsg", ["type", "tx", "node", "decision"])
-
         if False in shard_decisions.values():
             commit = CommitMsg(type = "Commit",
                                   tx = msg.tx,
                                   node = self.name,
                                   decision = False)
 
-            self.send(set([commit]))
-
-            return True, "Rejected Tx: %s" % msg.tx.idx
+            return self.do_return(log="Rejected Tx: %s" % msg.tx.idx,
+                                  messages=set([commit]))
 
         if None in shard_decisions.values():
-            return True, "No Decision Reached"
+            return self.do_return(log="No Decision Reached")
 
         if all(shard_decisions.values()):
             commit = CommitMsg(type = "Commit",
@@ -205,35 +216,32 @@ class AdvancedNode():
                                   node = self.name,
                                   decision = True)
 
-            self.send(set([commit]))
-            return True, "Accepted Tx: : %s" % msg.tx.idx
+            return self.do_return(log="Accepted Tx: : %s" % msg.tx.idx,
+                                  messages = set([commit]) )
 
     def do_commit(self, msg):
 
         if msg.type != "Commit":
-            return True, "Incorrect type: %s" % msg.type
+            return self.do_return(log="Incorrect type: %s" % msg.type)
 
         if msg.tx.idx not in self.transactions:
             self.transactions[msg.tx.idx] = msg.tx
         
         ## If it is not within our namespace no need to process
         if self.namespace() not in msg.tx.namespaces():
-            return True, "Not in NS"
+            return self.do_return(log="Not in NS")
 
         ## Check it is not already processed
         if msg.tx.idx in self.accepted or msg.tx.idx in self.rejected:
-            return True, "Already Committed: %s" % msg.tx.idx
+            return self.do_return(log="Already Committed: %s" % msg.tx.idx)
 
         if msg.decision:
             self.resources |= { d for d in msg.tx.news if d[0] in self.namespace() } 
             self.accepted.add(msg.tx.idx)
-            return True, "Commit Yes: %s" % msg.tx.idx
+            return self.do_return(log="Commit Yes: %s" % msg.tx.idx)
         else:
             self.rejected.add(msg.tx.idx)
-            return True, "Commit No: %s" % msg.tx.idx
-
-    def send(self, msgs):
-        self.out += list(msgs)
+            return self.do_return(log="Commit No: %s" % msg.tx.idx)
         
 
 class Transaction:
@@ -276,18 +284,17 @@ def test_process():
     # T0 = Transaction("T0", "T0 Data", [], [("a", "ID2")])
     T1 = Transaction("T1", "T1 Data", [("a", "ID1")], [("a", "ID2")])
     T2 = Transaction("T2", "T2 Data", [("a", "ID1")], [("a", "ID3")])
-    res, reason = nodeA.do_process(ProcessMsg("Process",T1))
-    res, reason = nodeA.do_process(ProcessMsg("Process",T2))
+    res, reason, m1 = nodeA.do_process(ProcessMsg("Process",T1))
+    res, reason, m2 = nodeA.do_process(ProcessMsg("Process",T2))
     print reason
 
-    queue = list(nodeA.out)
-    nodeA.out = []
+    queue = list(set(m1) | set(m2))
+    queue2 = set()
     for q in queue:
-        print nodeA.do_vote(q)
+        _,_, m3 = nodeA.do_vote(q)
+        queue2 |= set(m3)
 
-    queue = list(nodeA.out)
-    nodeA.out = []
-    for q in queue:
+    for q in queue2:
         print nodeA.do_commit(q)
 
     assert ("a", "ID2") in nodeA.resources
@@ -314,16 +321,19 @@ def run(trans, runnable):
         node, proc = choice(runnable)
 
         node.out = []
-        _, r = proc(msg)
-        if r not in results:
-            print steps, r
-            results.add(r)
+        to_send, to_repeat, all_logs = proc(msg)
 
-        for msg in node.out:
+        for r in all_logs:
+            if r not in results:
+                print steps, r
+                results.add(r)
+
+
+        for msg in to_send:
             if msg.type == "Commit" and msg.decision:
                 active |= msg.tx.news
 
-        xbuffer += node.out
+        xbuffer += to_send
 
 
 def test_many():
@@ -403,7 +413,6 @@ def test_classic4():
     runnable = [(nodeA, nodeA.do_all), (nodeB, nodeB.do_all), (nodeC, nodeC.do_all)]
 
     run(xbuffer, runnable)
-
 
     def print_votes(name, votes):
         print "%s:" % name
