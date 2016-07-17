@@ -121,6 +121,8 @@ class Chain:
         return last_block.get_item(self.store, block_index, item_index, evidence)
 
 class DocChain(Chain):
+    ''' A chain that stores hashes of documents '''
+
     def multi_add(self, items):
         docs = map(Document, items)
         for d in docs:

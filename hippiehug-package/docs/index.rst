@@ -20,7 +20,10 @@ The Redis backend requires a working installation of the Redis database and asso
 Introduction and Examples
 -------------------------
 
-The hippiehug module provides a *Merkle Tree* data structure representing a set of byte strings. 
+The hippiehug module provides a *Merkle Tree* data structure representing a set of byte strings. It also provides a *Hash Chain* based on a skip list allowing sublinear lookups and proofs of inclusion.
+
+Tree 
+````
 
 Using secure hash functions the tree is stored into a data store, that may be persistent and remote. The store is not trusted for integrity, however though cryptographic checks membership operations for items in the set are guaranteed to return the correct answer (or no answer).
 
@@ -37,6 +40,18 @@ In the following example we extract information out of a tree, and then check it
 .. literalinclude:: ../tests/test_doc.py
    :language: python
    :lines: 9-17
+
+Chain
+`````
+
+The hippiehug hash chain provides a way of sealing multiple sequential entries into a chain, and also allows for efficient proofs of includion of size O(log^2 N). The chain is checked by extracting a bundle of evidence, building a partial chain, and checking the inclusion of an item, as in the example that follows:
+
+.. literalinclude:: ../tests/test_doc.py
+   :language: python
+   :lines: 33-48
+
+Store
+`````
 
 A number of stores can be used to back the state of the tree. Those can be local or remote. By default a local python dictionary is used, which offers no persistence. However, the library also offers a Redis backed store through ``RedisStore``. Any class that defined ``__getitem__`` and ``__setitem__`` may be used as a store. Neither its integrity, not its consistency can affect the integrity of the set operations on the Tree.
 
