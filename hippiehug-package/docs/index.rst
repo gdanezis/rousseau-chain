@@ -77,6 +77,10 @@ The Merkle Tree Classes
    :members:
    :special-members: __init__
 
+.. autoclass:: hippiehug.DocChain
+   :members:
+
+
 Helper Structures
 -----------------
 

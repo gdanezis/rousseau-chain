@@ -61,7 +61,7 @@ def test_chain_doc():
 
     c2 = DocChain(evidence, root_hash = c.head)
     assert c2.get(50, 30) == "50|30"
-
+    assert c2.check(c.root(), 50, 30, "50|30")
 
 import pytest
 

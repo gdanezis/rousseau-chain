@@ -127,7 +127,7 @@ def __del__(self):
 ## -------------------- TESTS -------------------------
 
 
-def test_create_bucket():
+def xtest_create_bucket():
     test1name = ascii_hash(urandom(16))
     print "Name: %s" % test1name
 
@@ -143,7 +143,7 @@ def test_create_bucket():
             key.delete()
         bucket.delete()
 
-def test_create_add():
+def xtest_create_add():
     test1name = "chainspaceiotest1"
     print "Name: %s" % test1name
 

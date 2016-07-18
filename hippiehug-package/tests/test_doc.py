@@ -44,7 +44,7 @@ def test_chain():
     c.get(0, 0, evidence=proof)
 
     # Test chain
-    c2 = DocChain(proof, r)
-    assert c2.get(0,0) == "Hello"
+    c2 = DocChain(store = proof, root_hash = r)
+    assert c2.check(r, 0,0, "Hello")
 
 

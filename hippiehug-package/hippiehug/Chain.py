@@ -25,7 +25,7 @@ class Document:
         self.item = item
         """ The item stored in the Leaf. """
 
-        self.hid = ascii_hash("D"+self.item)
+        self.hid = ascii_hash(packb(("D",self.item)))
 
     def identity(self):
         """ Returns the hash ID of the Leaf. """
@@ -81,12 +81,14 @@ class Block:
 
         _, target_h = [(f,block_hash) for (f, block_hash) in self.fingers if f >= block_seq][-1]
 
+        # Get the target block and check its integrity
         target_block = store[target_h]
+        check_hash(target_h, target_block)
+
         return target_block.get_item(store, block_seq, item_seq, evidence)
 
     def __eq__(self, other):
         return self.hid == other.hid
-
 
 
 class Chain:
@@ -117,13 +119,18 @@ class Chain:
         if self.head is None:
             return None
 
+        ## Get head block and check its integrity
         last_block = self.store[self.head]
+        check_hash(self.head, last_block)
+
         return last_block.get_item(self.store, block_index, item_index, evidence)
 
 class DocChain(Chain):
-    ''' A chain that stores hashes of documents '''
+    ''' A chain that stores hashes of documents. Construct like a *Chain*. '''
 
     def multi_add(self, items):
+        ''' Add multiple items to seal a new block. '''
+
         docs = map(Document, items)
         for d in docs:
             self.store[d.hid] = d
@@ -132,10 +139,21 @@ class DocChain(Chain):
         Chain.multi_add(self, docs_id)
 
     def get(self, block_index, item_index, evidence=None):
+        ''' Get a sealed item, and optionally a bundle of evidence. '''
+
+        ## Get Doc and check its hash
         item = Chain.get(self, block_index, item_index, evidence)
         d = self.store[item]
+        check_hash(item, d)
         
         if evidence != None:
             evidence[d.hid] = d
 
         return self.store[item].item
+
+    def check(self, root, block_index, item_index, item):
+        """ Check that an item is within the structure at a specific point. """
+        ret = True
+        ret = ret and (self.root() == root)
+        ret = ret and (self.get(block_index, item_index) == item)
+        return ret
