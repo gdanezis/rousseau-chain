@@ -1,7 +1,7 @@
 from copy import copy
 from binascii import hexlify
 
-from Nodes import h as binary_hash
+from .Nodes import h as binary_hash
 
 def ascii_hash(s):
     return hexlify(binary_hash(s)[:20])
@@ -131,11 +131,11 @@ class DocChain(Chain):
     def multi_add(self, items):
         ''' Add multiple items to seal a new block. '''
 
-        docs = map(Document, items)
+        docs = list(map(Document, items))
         for d in docs:
             self.store[d.hid] = d
 
-        docs_id = map(lambda d: d.hid, docs)
+        docs_id = list(map(lambda d: d.hid, docs))
         Chain.multi_add(self, docs_id)
 
     def get(self, block_index, item_index, evidence=None):
@@ -157,3 +157,4 @@ class DocChain(Chain):
         ret = ret and (self.root() == root)
         ret = ret and (self.get(block_index, item_index) == item)
         return ret
+

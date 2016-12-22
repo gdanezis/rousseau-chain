@@ -1,4 +1,4 @@
-from Nodes import h, Leaf, Branch
+from .Nodes import h, Leaf, Branch
 
 try:
     import redis

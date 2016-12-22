@@ -2,13 +2,21 @@
 # For tests it necessary to have a configured AWS account.
 
 from .Chain import DocChain, Document, Block, ascii_hash
-import boto3
+
+try:
+    import boto3
+except:
+    print("Cannot install Boto3")
 
 from binascii import hexlify
 from os import urandom
 
 from json import dumps, loads
-from Queue import Queue
+try:
+    from Queue import Queue as Queue
+except:
+    from queue import Queue as Queue
+
 from threading import Thread
 
 def worker(q, bucket):
@@ -129,7 +137,7 @@ def __del__(self):
 
 def xtest_create_bucket():
     test1name = ascii_hash(urandom(16))
-    print "Name: %s" % test1name
+    print("Name: %s" % test1name)
 
     try:
         s3c = S3Chain(test1name+"test")
@@ -145,7 +153,7 @@ def xtest_create_bucket():
 
 def xtest_create_add():
     test1name = "chainspaceiotest1"
-    print "Name: %s" % test1name
+    print("Name: %s" % test1name)
 
     s3c = S3Chain(test1name+"test")
     s3c.add(["Hello","World"])

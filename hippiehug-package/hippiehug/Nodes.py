@@ -13,7 +13,7 @@ class Leaf:
         self.item = item
         """ The item stored in the Leaf. """
 
-        self.hid = h("L"+self.item)
+        self.hid = h(b"L"+self.item)
 
     def identity(self):
         """ Returns the hash ID of the Leaf. """
@@ -93,7 +93,7 @@ class Branch:
         self.right_branch = right_branch_id
         "The hash ID of the right leaf."
 
-        self.hid = h("B" + self.pivot + self.left_branch + self.right_branch)
+        self.hid = h(b"B" + self.pivot + self.left_branch + self.right_branch)
 
     def identity(self):
         """ Returns the hash ID of the Branch. """

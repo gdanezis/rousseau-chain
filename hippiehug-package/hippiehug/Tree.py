@@ -1,4 +1,4 @@
-from Nodes import h, Leaf, Branch
+from .Nodes import h, Leaf, Branch
 
 class Tree:
     def __init__(self, store = {}, root_hash = None):
@@ -7,10 +7,10 @@ class Tree:
         Example:
             >>> from hippiehug import Tree
             >>> t = Tree()
-            >>> t.add("Hello")
-            >>> "Hello" in t
+            >>> t.add(b"Hello")
+            >>> b"Hello" in t
             True
-            >>> "World" not in t
+            >>> b"World" not in t
             True
 
         """
@@ -40,8 +40,8 @@ class Tree:
 
         Example:
             >>> t = Tree()
-            >>> t.multi_add(["Hello", "World"])
-            >>> assert "Hello" in t and "World" in t
+            >>> t.multi_add([b"Hello", b"World"])
+            >>> assert b"Hello" in t and b"World" in t
 
         """
         keys = [h(i) for i in items]
@@ -74,15 +74,15 @@ class Tree:
 
         Example lookup:
             >>> t = Tree()
-            >>> t.multi_add(["Hello", "World"])
-            >>> t.multi_is_in(["Hello", "World", "!"])
+            >>> t.multi_add([b"Hello", b"World"])
+            >>> t.multi_is_in([b"Hello", b"World", b"!"])
             [True, True, False]
 
         Example gathering of evidence:
-            >>> _, head, bag = t.multi_is_in(["Hello", "World", "!"], True)
+            >>> _, head, bag = t.multi_is_in([b"Hello", b"World", b"!"], True)
             >>> new_store = dict((e.identity(), e) for e in bag)
             >>> new_t = Tree(new_store, head)
-            >>> new_t.multi_is_in(["Hello", "World", "!"])
+            >>> new_t.multi_is_in([b"Hello", b"World", b"!"])
             [True, True, False]
 
         """
@@ -118,12 +118,12 @@ class Tree:
 
         Example:
             >>> t = Tree()
-            >>> t.add("Hello")
-            >>> t.add("World")
-            >>> root, E = t.evidence("World")
+            >>> t.add(b"Hello")
+            >>> t.add(b"World")
+            >>> root, E = t.evidence(b"World")
             >>> evidence_store = dict((e.identity(), e) for e in E)
             >>> t2 = Tree(evidence_store, root)
-            >>> "World" in t2
+            >>> b"World" in t2
             True
 
         """

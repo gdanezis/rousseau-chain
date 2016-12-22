@@ -1,11 +1,16 @@
 # We implement a chain that lives on Amazon S3
 # For tests it necessary to have a configured AWS account.
 
+import future
+
 from .Chain import DocChain, Document, Block, ascii_hash
 import redis
 
-from json import dumps, loads
-from Queue import Queue
+# from json import dumps, loads
+
+from msgpack import packb, unpackb
+
+from queue import Queue
 from threading import Thread
 
 class RedisChain():
@@ -35,13 +40,13 @@ class RedisChain():
         if len(self.cache) > 10000:
             self.cache = {} 
 
-        o = loads(self.r.get(key))
+        o = unpackb(self.r.get(key))
         
-        if o["type"] == "Document":
-            obj = Document(o["body"])
+        if o[b"type"] == b"Document":
+            obj = Document(o[b"body"])
 
-        if o["type"] == "Block":
-            obj = Block(items=o["items"], sequence=o["sequence"], fingers=o["fingers"])
+        if o[b"type"] == b"Block":
+            obj = Block(items=o[b"items"], sequence=o[b"sequence"], fingers=o[b"fingers"])
 
         self.cache[key] = obj
         return obj
@@ -54,11 +59,11 @@ class RedisChain():
             self.cache[key] = value
 
         if isinstance(value, Document):
-            o = dumps({"type":"Document", "body":value.item, "hid":value.hid})
+            o = packb({b"type":b"Document", b"body":value.item, b"hid":value.hid})
             self.r.set(key, o)
 
         if isinstance(value, Block):
-            o = dumps({"type":"Block", "fingers":value.fingers, "items":value.items, "sequence": value.sequence, "hid":value.hid})
+            o = packb({b"type":b"Block", b"fingers":value.fingers, b"items":value.items, "sequence": value.sequence, "hid":value.hid})
             self.r.set(key, o)
 
 
@@ -87,20 +92,20 @@ class RedisChain():
 
 
 def test_init():
-    rc = RedisChain("test1")
+    rc = RedisChain(b"test1")
 
 
 def test_get_set():
-    rc = RedisChain("test1")
+    rc = RedisChain(b"test1")
 
-    d = Document("Hello")
+    d = Document(b"Hello")
     rc[d.hid] = d
     rc.cache = {}
 
     d2 = rc[d.hid]
     assert d == d2
 
-    b = Block(["Hello", "World"])
+    b = Block([b"Hello", b"World"])
     rc[b.hid] = b
     rc.cache = {}
 
@@ -110,13 +115,13 @@ def test_get_set():
 
 def test_create_add():
 
-    rc = RedisChain("test3")
-    rc.add(["Hello1","World2"])
+    rc = RedisChain(b"test3")
+    rc.add([b"Hello1",b"World2"])
 
-    assert rc.get(0,0) == "Hello1"
+    assert rc.get(0,0) == b"Hello1"
 
     evidence = {}
     rc.get(0,0, evidence)
 
     d = DocChain(evidence, rc.root())
-    assert d.get(0,0) == "Hello1"
+    assert d.get(0,0) == b"Hello1"
