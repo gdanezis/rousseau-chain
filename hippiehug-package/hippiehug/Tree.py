@@ -99,7 +99,7 @@ class Tree:
         evid = [] if evidence else None
 
         solution = {}
-        head_element.multi_is_in_fast( self.store, evid, keys, solution)
+        head_element.multi_is_in_fast( self.store, evid, keys, solution=solution)
 
         if not evidence:
             return [solution[i] for i in keys]

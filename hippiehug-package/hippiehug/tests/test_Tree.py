@@ -52,12 +52,27 @@ def test_leaf_isin():
 	assert l.is_in(store, b"Hello")
 
 
+def test_leaf_isin_map():
+	l = Leaf(item=b"Hello", key=b"World")
+	store = {l.identity() : l}
+	b = l.add(store, b"World")
+	assert l.is_in(store, item=b"Hello", key=b"World")
+
+
 def test_Branch_isin():
 	l = Leaf(b"Hello")
 	store = {l.identity() : l}
 	b = l.add(store, b"World")
 	assert b.is_in(store, b"Hello")
 	assert b.is_in(store, b"World")
+
+def test_Branch_isin_map():
+	l = Leaf(item=b"Hello", key=b"A")
+	store = {l.identity() : l}
+	b = l.add(store, item=b"World", key=b"B")
+	assert b.is_in(store, b"Hello", b"A")
+	assert b.is_in(store, b"World", b"B")
+	assert not b.is_in(store, b"World", b"C")
 
 def test_Branch_multi():
 	l = Leaf(b"Hello")
@@ -184,6 +199,24 @@ def test_multi_test():
 	t2 = Tree(e, head)
 	assert t2.multi_is_in([b"Hello", b"World"]) == [True, True]
 
+def test_lookup():
+	l = Leaf(item=b"Hello", key=b"A")
+	store = {l.identity() : l}
+	b = l.add(store, item=b"World", key=b"B")
+	assert b.is_in(store, b"Hello", b"A")
+	assert b.is_in(store, b"World", b"B")
+	assert not b.is_in(store, b"World", b"C")
 
+	assert b.lookup(store, b"B") == (b"B", b"World")
 
+	try:
+		b.lookup(store, b"B") == (b"B", b"World2")
+		assert False
+	except:
+		assert True		
 
+	try:
+		b.lookup(store, b"C") == (b"B", b"World2")
+		assert False
+	except:
+		assert True		
