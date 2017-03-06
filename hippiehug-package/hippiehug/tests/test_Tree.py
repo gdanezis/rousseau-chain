@@ -220,3 +220,28 @@ def test_lookup():
 		assert False
 	except:
 		assert True		
+
+
+def test_double_add():
+	l = Leaf(item=b"Hello", key=b"A")
+	store = {l.identity() : l}
+	b = l.add(store, item=b"World", key=b"B")
+	assert b.is_in(store, b"Hello", b"A")
+	assert b.is_in(store, b"World", b"B")
+	assert not b.is_in(store, b"World", b"C")
+
+	b = l.add(store, item=b"World2", key=b"B")
+
+	assert b.lookup(store, b"B") == (b"B", b"World")
+
+	try:
+		b.lookup(store, b"B") == (b"B", b"World2")
+		assert False
+	except:
+		assert True		
+
+	try:
+		b.lookup(store, b"C") == (b"B", b"World2")
+		assert False
+	except:
+		assert True		
