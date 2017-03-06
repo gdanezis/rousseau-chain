@@ -39,7 +39,7 @@ class Leaf:
             return self
 
         # Add the new branch
-        if self.key < l.key:
+        if self.key <= l.key:
             b = Branch(self.key, self.hid, leaf_id)
         else:
             b = Branch(l.key, leaf_id, self.hid)

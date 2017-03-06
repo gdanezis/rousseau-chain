@@ -230,18 +230,7 @@ def test_double_add():
 	assert b.is_in(store, b"World", b"B")
 	assert not b.is_in(store, b"World", b"C")
 
-	b = l.add(store, item=b"World2", key=b"B")
+	b = b.add(store, item=b"World2", key=b"B")
 
 	assert b.lookup(store, b"B") == (b"B", b"World")
-
-	try:
-		b.lookup(store, b"B") == (b"B", b"World2")
-		assert False
-	except:
-		assert True		
-
-	try:
-		b.lookup(store, b"C") == (b"B", b"World2")
-		assert False
-	except:
-		assert True		
+	assert not b.lookup(store, b"B") == (b"B", b"World2")
