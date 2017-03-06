@@ -9,8 +9,8 @@ def test_evidence():
 	t = Tree()
 
 	# Test positive case
-	t.add(b"Hello")
-	t.add(b"World")
+	t.add(b"Hello", b"Hello")
+	t.add(b"World", b"World")
 
 	root, E = t.evidence(b"World")
 	assert len(E) == 2
@@ -28,7 +28,7 @@ def test_store():
 
 	r = RedisStore()
 
-	l = Leaf(b"Hello")
+	l = Leaf(b"Hello", b"Hello")
 	r[l.identity()] = l
 	assert r[l.identity()].identity() == l.identity()
 
@@ -41,30 +41,30 @@ def test_store_tree():
 	from os import urandom
 	for _ in range(100):
 		item = urandom(32)
-		t.add(item)
+		t.add(item, item)
 		assert t.is_in(item)
 		assert not t.is_in(urandom(32))
 
 def test_leaf_isin():
-	l = Leaf(b"Hello")
+	l = Leaf(b"Hello", b"Hello")
 	store = {l.identity() : l}
-	b = l.add(store, b"World")
-	assert l.is_in(store, b"Hello")
+	b = l.add(store, b"Woitemrld", b"Woitemrld")
+	assert l.is_in(store, b"Hello", b"Hello")
 
 
 def test_leaf_isin_map():
 	l = Leaf(item=b"Hello", key=b"World")
 	store = {l.identity() : l}
-	b = l.add(store, b"World")
+	b = l.add(store, b"World", b"World")
 	assert l.is_in(store, item=b"Hello", key=b"World")
 
 
 def test_Branch_isin():
-	l = Leaf(b"Hello")
+	l = Leaf(b"Hello", b"Hello")
 	store = {l.identity() : l}
-	b = l.add(store, b"World")
-	assert b.is_in(store, b"Hello")
-	assert b.is_in(store, b"World")
+	b = l.add(store, b"World", b"World")
+	assert b.is_in(store, b"Hello", b"Hello")
+	assert b.is_in(store, b"World", b"World")
 
 def test_Branch_isin_map():
 	l = Leaf(item=b"Hello", key=b"A")
@@ -75,21 +75,21 @@ def test_Branch_isin_map():
 	assert not b.is_in(store, b"World", b"C")
 
 def test_Branch_multi():
-	l = Leaf(b"Hello")
+	l = Leaf(b"Hello", b"Hello")
 	store = {l.identity() : l}
-	b = l.multi_add(store, [b"B", b"C"])
+	b = l.multi_add(store, [b"B", b"C"], [b"B", b"C"])
 	b.check(store)
 
-	assert b.is_in(store, b"B")
-	assert b.is_in(store, b"C")
-	assert b.is_in(store, b"Hello")
+	assert b.is_in(store, b"B", b"B")
+	assert b.is_in(store, b"C", b"C")
+	assert b.is_in(store, b"Hello", b"Hello")
 
 def test_Branch_add():
-	l = Leaf(b"Hello")
+	l = Leaf(b"Hello", b"Hello")
 	store = {l.identity() : l}
-	b = l.add(store, b"World")
+	b = l.add(store, b"World", b"World")
 
-	b2 = b.add(store, b"Doom")
+	b2 = b.add(store, b"Doom", b"Doom")
 	assert isinstance(b2, Branch)
 
 	assert b2.left_branch in store
@@ -100,21 +100,21 @@ def test_Branch_add():
 
 def test_add_like_a_monkey():
 	
-	root = Leaf(b"Hello")
+	root = Leaf(b"Hello",b"Hello")
 	store = {root.identity() : root}
 
 	from os import urandom
 	for _ in range(100):
 		item = urandom(32)
-		root = root.add(store, item)
+		root = root.add(store, item, item)
 		root.check(store)
-		assert root.is_in(store, item)
+		assert root.is_in(store, item, item)
 
 def test_Leaf_add():
-	l = Leaf(b"Hello")
+	l = Leaf(b"Hello", b"Hello")
 	store = {l.identity() : l}
 
-	b = l.add(store, b"World")
+	b = l.add(store, b"World", b"World")
 
 	assert isinstance(b, Branch)
 
@@ -192,7 +192,7 @@ def test_multi_test():
 	t.multi_add([b"Hello", b"World"])
 	assert t.multi_is_in([b"Hello", b"World"]) == [True, True]
 
-	answer, head, evidence = t.multi_is_in([b"Hello", b"World"], True)
+	answer, head, evidence = t.multi_is_in([b"Hello", b"World"], evidence=True)
 	assert answer == [True, True]
 
 	e = dict((k.identity(), k) for k in evidence)

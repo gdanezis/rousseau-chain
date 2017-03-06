@@ -22,19 +22,23 @@ class Tree:
         of the set is guaranteed. """
         return self.head
 
-    def add(self, item):
+    def add(self, item, key=None):
         """ Add and element to the Merkle tree. """
-        key = h(item)
+        item_key = h(item)
+
+        if key is None:
+            key = item
+
         if self.head == None:
-            l = Leaf(key)
+            l = Leaf(item_key, key)
             self.store[l.identity()] = l
             self.head = l.identity()
         else:
             head_element = self.store[self.head]
-            new_head_elem = head_element.add(self.store, key)
+            new_head_elem = head_element.add(self.store, item_key, key)
             self.head = new_head_elem.identity()
     
-    def multi_add(self, items):
+    def multi_add(self, items, keys=None):
         """ Add many elements to the Merkle tree. This is 
         more efficient than adding individual elements.
 
@@ -44,31 +48,36 @@ class Tree:
             >>> assert b"Hello" in t and b"World" in t
 
         """
-        keys = [h(i) for i in items]
+        item_keys = [h(i) for i in items]
+        if keys is None:
+            keys = items
 
         if self.head == None:
-            l = Leaf(keys[0])
+            l = Leaf(item_keys[0], keys[0])
             self.store[l.identity()] = l
 
-            b = l.multi_add(self.store, keys[1:])
+            b = l.multi_add(self.store, item_keys[1:], keys[1:])
             self.head = b.identity()
 
         else:
             head_element = self.store[self.head]
-            new_head_elem = head_element.multi_add(self.store, keys)
+            new_head_elem = head_element.multi_add(self.store, item_keys, keys)
             self.head = new_head_elem.identity()
 
 
-    def is_in(self, item):
+    def is_in(self, item, key=None):
         """ Checks whether an element is in the Merkle Tree. """
         if self.head == None:
             return False
 
-        key = h(item)
-        head_element = self.store[self.head]
-        return head_element.is_in(self.store, key)
+        if key is None:
+            key = item
 
-    def multi_is_in(self, items, evidence = False):
+        item_key = h(item)
+        head_element = self.store[self.head]
+        return head_element.is_in(self.store, item_key, key)
+
+    def multi_is_in(self, items, keys=None, evidence=False):
         """ Checks whether the items are in the Tree. Optionally, returns the 
         current head of the Tree and a list of Branches and Leafs as evidence. 
 
@@ -79,13 +88,29 @@ class Tree:
             [True, True, False]
 
         Example gathering of evidence:
-            >>> _, head, bag = t.multi_is_in([b"Hello", b"World", b"!"], True)
+            >>> _, head, bag = t.multi_is_in([b"Hello", b"World", b"!"], evidence=True)
             >>> new_store = dict((e.identity(), e) for e in bag)
             >>> new_t = Tree(new_store, head)
             >>> new_t.multi_is_in([b"Hello", b"World", b"!"])
             [True, True, False]
 
+        Example using key-values:
+            >>> t = Tree()
+            >>> t.add(key=b"K1", item=b"V1")
+            >>> t.add(key=b"K2", item=b"V2")
+            >>> t.is_in(key=b"K2", item=b"V2")
+            True
+            >>> t.is_in(key=b"K1", item=b"V1")
+            True
+            >>> t.multi_is_in(keys=[b"K2", b"K1", b"K2", b"!"], items=[b"V2", b"V1", b"!", b"V2"])
+            [True, True, False, False]
+
         """
+
+        # >>> t.multi_add(keys=[b"K1", b"K2"], items=[b"V1", b"V2"])
+
+        if keys is None:
+            keys = items
 
         if self.head == None:
             if not evidence:
@@ -93,23 +118,23 @@ class Tree:
             else:
                 return [ False ] * len(items), None, []
 
-        keys = [ h(i) for i in items ]
+        item_keys = [ h(i) for i in items ]
         head_element = self.store[self.head]
                 
         evid = [] if evidence else None
 
         solution = {}
-        head_element.multi_is_in_fast( self.store, evid, keys, solution=solution)
+        head_element.multi_is_in_fast( self.store, evid, items=item_keys, keys=keys, solution=solution)
 
         if not evidence:
-            return [solution[i] for i in keys]
+            return [solution[(i, k)] for i, k in zip(item_keys, keys)]
         else:
-            return [solution[i] for i in keys], self.head, evid
+            return [solution[(i, k)] for i, k in zip(item_keys, keys)], self.head, evid
 
     def __contains__(self, item):
         return self.is_in(item)
 
-    def evidence(self, item):
+    def evidence(self, key=None):
         """ Gathers evidence about the inclusion / exclusion of the *item*. 
 
         The evidence includes all Branches and Leafs necessary to prove the *item* is, 
@@ -130,7 +155,7 @@ class Tree:
         if self.head == None:
             return []
 
-        key = h(item)
+        # item_key = h(item)
         head_element = self.store[self.head]
         return self.head, head_element.evidence(self.store, [], key)
 

@@ -9,7 +9,8 @@ except:
 def default(obj):
     """ Serialize objects using msgpack. """
     if isinstance(obj, Leaf):
-        return msgpack.ExtType(42, obj.item)
+        datab = msgpack.packb((obj.item, obj.key))
+        return msgpack.ExtType(42, datab)
     if isinstance(obj, Branch):
         datab = msgpack.packb((obj.pivot, obj.left_branch, obj.right_branch))
         return msgpack.ExtType(43,  datab)
@@ -20,7 +21,8 @@ def default(obj):
 def ext_hook(code, data):
     """ Deserialize objects using msgpack. """
     if code == 42:
-        return Leaf(data) 
+        l_item, l_key = msgpack.unpackb(data)
+        return Leaf(l_item, l_key) 
     if code == 43:
         piv, r_leaf, l_leaf = msgpack.unpackb(data)
         return Branch(piv, r_leaf, l_leaf)

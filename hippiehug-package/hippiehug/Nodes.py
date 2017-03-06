@@ -9,17 +9,18 @@ class Leaf:
 
     __slots__ = ["key", "item", "hid"]
 
-    def __init__(self, item, key=None):
+    def __init__(self, item, key):
         self.item = item
         """ The item stored in the Leaf. """
 
-        self.key = None
+        assert key is not None
+        self.key = key
         """ The key under which the item is stored in the leaf. """
 
-        if key:
-            self.key = key
-        else:
-            self.key = item
+        #if key:
+        #    self.key = key
+        #else:
+        #    self.key = item
 
         self.hid = h(b"L|" + self.key +b"|" + self.item)
 
@@ -27,7 +28,9 @@ class Leaf:
         """ Returns the hash ID of the Leaf. """
         return self.hid
 
-    def add(self, store, item, key=None):
+    def add(self, store, item, key):
+
+        assert key is not None
 
         # Make a new leaf & store in DB
         l = Leaf(item, key)
@@ -47,12 +50,11 @@ class Leaf:
         store[b.hid] = b
         return b
 
-    def multi_add(self, store, items, keys=None):
+    def multi_add(self, store, items, keys):
+        assert keys is not None
+
         if items == []:
             return self
-
-        if keys is None:
-            keys = items
 
         # Add the first element to the store
         i = items[0]
@@ -68,7 +70,9 @@ class Leaf:
         return b.multi_add(store, rest, keys=keys[1:])
 
 
-    def is_in(self, store, item, key=None):
+    def is_in(self, store, item, key):
+        assert key is not None
+
         l = Leaf(item, key)
         return l.hid == self.hid
 
@@ -106,10 +110,8 @@ class Branch:
         """ Returns the hash ID of the Branch. """
         return self.hid
 
-    def add(self, store, item, key = None):
-
-        if key is None:
-            key = item
+    def add(self, store, item, key):
+        assert key is not None
 
         if key <= self.pivot:
             b_left = store[self.left_branch]
@@ -129,12 +131,11 @@ class Branch:
         store[b.hid] = b
         return b
 
-    def multi_add(self, store, items, keys=None):
+    def multi_add(self, store, items, keys):
         if items == []:
             return self
 
-        if keys is None:
-            keys = items
+        assert keys is not None
 
         left_list = []
         right_list = []
@@ -176,9 +177,8 @@ class Branch:
             return store[self.right_branch].lookup(store, key)
 
 
-    def is_in(self, store, item, key=None):
-        if key is None:
-            key = item
+    def is_in(self, store, item, key):
+        assert key is not None
 
         if key <= self.pivot:
             return store[self.left_branch].is_in(store, item, key)
@@ -186,13 +186,12 @@ class Branch:
             return store[self.right_branch].is_in(store, item, key)
 
 
-    def multi_is_in_fast(self, store, evidence, items, keys=None, solution={}):
+    def multi_is_in_fast(self, store, evidence, items, keys, solution={}):
         if items == []:
             return
 
-        if keys == None:
-            keys = items
-
+        assert keys is not None
+        
         assert len(items) == len(keys)
         work_list = [(self, items, keys)]
 
@@ -206,7 +205,7 @@ class Branch:
             if isinstance(work_node, Leaf):
                 for i, k in zip(work_items, work_keys):
                     l = Leaf(i, k)
-                    solution[i] = (l.hid == work_node.hid)
+                    solution[(i, k)] = (l.hid == work_node.hid)
             else:
                 left_list = []
                 left_keys = []
