@@ -41,6 +41,15 @@ In the following example we extract information out of a tree, and then check it
    :language: python
    :lines: 9-17
 
+Key-Value Tree
+``````````````
+
+Hippiehug trees can be used to store key-value pairs. This allows some data to be unequivocally associated with a key, guaranteeing it is the only data associated with that key.
+
+.. literalinclude:: ../tests/test_doc.py
+   :language: python
+   :lines: 9-17
+   
 Chain
 `````
 

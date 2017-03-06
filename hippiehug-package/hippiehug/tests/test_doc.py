@@ -48,3 +48,10 @@ def test_chain():
     assert c2.check(r, 0,0, b"Hello")
 
 
+def test_key_value():
+    from hippiehug import Tree
+    t = Tree()
+    t.add(key=b"Yellow", item=b"Banana")
+    t.add(key=b"Red", item=b"Apple")
+
+    assert t.lookup(b"Red") == (b"Red", b"Apple")
