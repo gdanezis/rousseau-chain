@@ -34,11 +34,11 @@ def win(quiet=True):
 @task
 def upload(quiet=False):
     """ Uploads the latest distribution to pypi. """
-    
+
     lib = file(os.path.join("hippiehug", "__init__.py")).read()
     v = re.findall("VERSION.*=.*['\"](.*)['\"]", lib)[0]
 
     print("upload dist: %s" % v)
     sh('python setup.py sdist bdist')
     sh("twine upload dist/*%s*" % v)
-    
+
