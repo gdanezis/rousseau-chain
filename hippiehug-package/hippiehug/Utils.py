@@ -8,15 +8,15 @@ from binascii import hexlify
 
 def binary_hash(item):
     """
-    >>> binary_hash(b'value')[:4]
-    b'\xcdB@M'
+    >>> isinstance(binary_hash(b'value')[:4], six.binary_type)
+    True
     """
     return xhash(item).digest()
 
 
 def ascii_hash(item):
     """
-    >>> ascii_hash(b'value')[:4]
-    b'cd42'
+    >>> ascii_hash(b'value')[:4] == b'cd42'
+    True
     """
     return hexlify(binary_hash(item))
