@@ -39,13 +39,14 @@ class Block:
         self.fingers = fingers or []
         self.aux = None
 
-        # Precomute the head
-        self.hid = self.head()
-
-    def head(self):
+    def hash(self):
         """Return the head of the block."""
         return binary_hash(packb(
                 ("S", self.index, self.fingers, self.items, self.aux)))
+
+    @property
+    def hid(self):
+        return self.hash()
 
     def next_block(self, store, items, pre_commit_fn=None):
         """Build a subsequent block, sealing a list of transactions.

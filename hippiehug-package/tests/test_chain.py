@@ -89,4 +89,5 @@ def test_chain_pre_commit():
 
     assert block.items == ["main"]
     assert block.aux == ["aux"]
+    assert block.hash() in c.store
 
