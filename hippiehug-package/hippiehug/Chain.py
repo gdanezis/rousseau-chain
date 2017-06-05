@@ -32,24 +32,28 @@ class Document:
 
 
 class Block:
-    def __init__(self, items, index=0, fingers=None):
+    def __init__(self, items, index=0, fingers=None, aux=None):
         """Initialize a block."""
         self.items = items
         self.index = index
         self.fingers = fingers or []
+        self.aux = None
 
         # Precomute the head
         self.hid = self.head()
 
     def head(self):
         """Return the head of the block."""
-        return binary_hash(packb(("S", self.index, self.fingers, self.items)))
+        return binary_hash(packb(
+                ("S", self.index, self.fingers, self.items, self.aux)))
 
-    def next_block(self, store, items):
+    def next_block(self, store, items, pre_commit_fn=None):
         """Build a subsequent block, sealing a list of transactions.
 
         :param store: Backend
         :param items: Block items
+        :param pre_commit_fn: Function that gets called on the block before
+                it gets committed to the chain.
         """
         new_index = self.index + 1
         new_fingers = [(self.index, self.hid)]
@@ -58,6 +62,10 @@ class Block:
         new_fingers += [f for f in self.fingers if f[0] in finger_index]
 
         new_b = Block(items, new_index, new_fingers)
+
+        if pre_commit_fn is not None:
+            pre_commit_fn(new_b)
+
         store[new_b.hid] = new_b
         return new_b
 
@@ -105,16 +113,19 @@ class Chain:
         """Return the head of the chain."""
         return self.head
 
-    def multi_add(self, items):
+    def multi_add(self, items, pre_commit_fn=None):
         """Add a batch of elements and seal a new block."""
         if self.head is None:
             # Make a new one
-            b0 = Block( items )
+            b0 = Block(items)
+            if pre_commit_fn is not None:
+                pre_commit_fn(b0)
             self.store[b0.hid] = b0
             self.head = b0.hid
         else:
             last_block = self.store[self.head]
-            b1 = last_block.next_block(self.store, items)
+            b1 = last_block.next_block(self.store, items,
+                    pre_commit_fn=pre_commit_fn)
             self.head = b1.hid
 
     def get(self, block_index, item_index, evidence=None):
