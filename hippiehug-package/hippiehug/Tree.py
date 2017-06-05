@@ -15,7 +15,7 @@ class Tree:
             True
 
         """
-        self.store = store or {}
+        self.store = store if store is not None else {}
         self.root_hash = root_hash
 
     def root(self):

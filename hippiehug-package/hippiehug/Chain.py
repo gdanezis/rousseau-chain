@@ -39,13 +39,14 @@ class Block:
         self.fingers = fingers or []
         self.aux = None
 
-        # Precomute the head
-        self.hid = self.head()
-
-    def head(self):
+    def hash(self):
         """Return the head of the block."""
         return binary_hash(packb(
                 ("S", self.index, self.fingers, self.items, self.aux)))
+
+    @property
+    def hid(self):
+        return self.hash()
 
     def next_block(self, store, items, pre_commit_fn=None):
         """Build a subsequent block, sealing a list of transactions.
@@ -106,7 +107,7 @@ class Block:
 class Chain:
     def __init__(self, store=None, root_hash=None):
         """Initialize a chain backed by a store."""
-        self.store = store or {}
+        self.store = store if store is not None else {}
         self.head = root_hash
 
     def root(self):

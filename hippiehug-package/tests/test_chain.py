@@ -89,4 +89,22 @@ def test_chain_pre_commit():
 
     assert block.items == ["main"]
     assert block.aux == ["aux"]
+    assert block.hash() in c.store
+
+def test_chain_default_store():
+    c = Chain()
+    c.multi_add(["test"])
+    assert c.get(0, 0) is not None
+
+    c2 = Chain()
+    assert c2.get(0, 0) is None
+
+def test_chain_empty_store():
+    store = {}
+    c = Chain(store)
+    c.multi_add(["test"])
+    assert c.get(0, 0) == "test"
+
+    c2 = Chain(store, root_hash=c.head)
+    assert c2.get(0, 0) == "test"
 
