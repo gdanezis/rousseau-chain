@@ -1,8 +1,9 @@
 from .Nodes import h, Leaf, Branch
 
+
 class Tree:
-    def __init__(self, store = {}, root_hash = None):
-        """ Initiates a Merkle tree from a store and a root hash. 
+    def __init__(self, store=None, root_hash=None):
+        """Initialize a Merkle tree from a store and a root hash.
 
         Example:
             >>> from hippiehug import Tree
@@ -14,72 +15,85 @@ class Tree:
             True
 
         """
-        self.head = root_hash
-        self.store = store  ## This is our remote (key -> value) store
+        self.store = store or {}
+        self.root_hash = root_hash
 
     def root(self):
-        """ Returns the root of the Tree. Keep this value safe, and the integrity 
-        of the set is guaranteed. """
-        return self.head
+        """Return the root of the Tree.
+
+        Keep this value safe, and the integrity of the set is guaranteed.
+        """
+        return self.root_hash
 
     def add(self, item, key=None):
-        """ Add and element to the Merkle tree. """
+        """Add and element to the Merkle tree."""
         item_key = h(item)
 
         if key is None:
             key = item
 
-        if self.head == None:
+        if self.root_hash == None:
             l = Leaf(item_key, key)
             self.store[l.identity()] = l
-            self.head = l.identity()
+            self.root_hash = l.identity()
         else:
-            head_element = self.store[self.head]
+            head_element = self.store[self.root_hash]
             new_head_elem = head_element.add(self.store, item_key, key)
-            self.head = new_head_elem.identity()
-    
+            self.root_hash = new_head_elem.identity()
+
     def multi_add(self, items, keys=None):
-        """ Add many elements to the Merkle tree. This is 
-        more efficient than adding individual elements.
+        """Add many elements to the Merkle tree.
+
+        This is more efficient than adding individual elements.
+
+        :param items: Items to add
+        :param keys:
 
         Example:
             >>> t = Tree()
             >>> t.multi_add([b"Hello", b"World"])
             >>> assert b"Hello" in t and b"World" in t
-
         """
+
         item_keys = [h(i) for i in items]
         if keys is None:
             keys = items
 
-        if self.head == None:
+        if self.root_hash == None:
             l = Leaf(item_keys[0], keys[0])
             self.store[l.identity()] = l
 
             b = l.multi_add(self.store, item_keys[1:], keys[1:])
-            self.head = b.identity()
+            self.root_hash = b.identity()
 
         else:
-            head_element = self.store[self.head]
+            head_element = self.store[self.root_hash]
             new_head_elem = head_element.multi_add(self.store, item_keys, keys)
-            self.head = new_head_elem.identity()
-
+            self.root_hash = new_head_elem.identity()
 
     def is_in(self, item, key=None):
-        """ Checks whether an element is in the Merkle Tree. """
-        if self.head == None:
+        """Checks whether an element is in the Merkle Tree.
+
+        :param item: Item to check
+        :param key: If not None, hash of the item is used as a lookup key
+        """
+        if self.root_hash == None:
             return False
 
         if key is None:
             key = item
 
         item_key = h(item)
-        head_element = self.store[self.head]
+        head_element = self.store[self.root_hash]
         return head_element.is_in(self.store, item_key, key)
 
     def multi_is_in(self, items, keys=None, evidence=False):
-        """ Checks whether the items are in the Tree. Optionally, returns the 
-        current head of the Tree and a list of Branches and Leafs as evidence. 
+        """Check whether the items are in the Tree.
+
+        :param items: Items to check
+        :param keys: If not None, hashes of items are used as lookup keys
+        :param evidence: Return the current root_hash of the Tree and a list
+                of Branches and Leafs as evidence.
 
         Example lookup:
             >>> t = Tree()
@@ -88,9 +102,9 @@ class Tree:
             [True, True, False]
 
         Example gathering of evidence:
-            >>> _, head, bag = t.multi_is_in([b"Hello", b"World", b"!"], evidence=True)
+            >>> _, root_hash, bag = t.multi_is_in([b"Hello", b"World", b"!"], evidence=True)
             >>> new_store = dict((e.identity(), e) for e in bag)
-            >>> new_t = Tree(new_store, head)
+            >>> new_t = Tree(new_store, root_hash)
             >>> new_t.multi_is_in([b"Hello", b"World", b"!"])
             [True, True, False]
 
@@ -112,15 +126,15 @@ class Tree:
         if keys is None:
             keys = items
 
-        if self.head == None:
+        if self.root_hash == None:
             if not evidence:
                 return [ False ] * len(items)
             else:
                 return [ False ] * len(items), None, []
 
         item_keys = [ h(i) for i in items ]
-        head_element = self.store[self.head]
-                
+        head_element = self.store[self.root_hash]
+
         evid = [] if evidence else None
 
         solution = {}
@@ -129,17 +143,17 @@ class Tree:
         if not evidence:
             return [solution[(i, k)] for i, k in zip(item_keys, keys)]
         else:
-            return [solution[(i, k)] for i, k in zip(item_keys, keys)], self.head, evid
+            return [solution[(i, k)] for i, k in zip(item_keys, keys)], self.root_hash, evid
 
     def __contains__(self, item):
         return self.is_in(item)
 
     def evidence(self, key=None):
-        """ Gathers evidence about the inclusion / exclusion of the *item*. 
+        """Gather evidence about the inclusion / exclusion of the *key*.
 
-        The evidence includes all Branches and Leafs necessary to prove the *item* is, 
+        The evidence includes all Branches and Leafs necessary to prove the *key* is,
         or is not, in the Merkle Tree. They are ordered from the root to the Leaf
-        that either contrains the sought *item*, or not.
+        that either contrains the sought *key*, or not.
 
         Example:
             >>> t = Tree()
@@ -152,10 +166,10 @@ class Tree:
             True
 
         """
-        if self.head == None:
+        if self.root_hash == None:
             return []
 
         # item_key = h(item)
-        head_element = self.store[self.head]
-        return self.head, head_element.evidence(self.store, [], key)
+        head_element = self.store[self.root_hash]
+        return self.root_hash, head_element.evidence(self.store, [], key)
 
