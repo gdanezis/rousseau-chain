@@ -1,7 +1,8 @@
 # We implement a chain that lives on Amazon S3
 # For tests it necessary to have a configured AWS account.
 
-from .Chain import DocChain, Document, Block, ascii_hash
+from .Chain import DocChain, Document, Block
+from .Utils import ascii_hash
 
 try:
     import boto3
@@ -22,7 +23,7 @@ from threading import Thread
 def worker(q, bucket):
     while True:
         (key, value) = q.get()
-        
+
         try:
             if isinstance(value, Document):
                 bucket.put_object(Key="/Objects/%s" % key, ContentType="text/plain",
@@ -83,14 +84,14 @@ class S3Chain():
     def __getitem__(self, key):
         if key in self.cache:
             return self.cache[key]
-        
+
         if len(self.cache) > 10000:
-            self.cache = {} 
+            self.cache = {}
 
         self.q.join()
 
         o = self.s3.Object(self.name, "/Objects/%s" % key)
-        
+
         if o.metadata["type"] == "Document":
             obj = Document(o.get()["Body"].read())
 
@@ -114,7 +115,7 @@ class S3Chain():
 
     def add(self, items):
         """ Add a new block with the given items. """
-        self.chain.multi_add(items)    
+        self.chain.multi_add(items)
         self.q.join()
 
         # Only commit the new head after everything else.

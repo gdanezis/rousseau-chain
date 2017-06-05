@@ -1,9 +1,6 @@
-# We implement a chain that lives on Amazon S3
-# For tests it necessary to have a configured AWS account.
-
 import future
 
-from .Chain import DocChain, Document, Block, ascii_hash
+from .Chain import DocChain, Document, Block
 import redis
 
 # from json import dumps, loads
@@ -36,17 +33,17 @@ class RedisChain():
     def __getitem__(self, key):
         if key in self.cache:
             return self.cache[key]
-        
+
         if len(self.cache) > 10000:
-            self.cache = {} 
+            self.cache = {}
 
         o = unpackb(self.r.get(key))
-        
+
         if o[b"type"] == b"Document":
             obj = Document(o[b"body"])
 
         if o[b"type"] == b"Block":
-            obj = Block(items=o[b"items"], sequence=o[b"sequence"], fingers=o[b"fingers"])
+            obj = Block(items=o[b"items"], index=o[b"index"], fingers=o[b"fingers"], aux=o[b"aux"])
 
         self.cache[key] = obj
         return obj
@@ -63,7 +60,7 @@ class RedisChain():
             self.r.set(key, o)
 
         if isinstance(value, Block):
-            o = packb({b"type":b"Block", b"fingers":value.fingers, b"items":value.items, "sequence": value.sequence, "hid":value.hid})
+            o = packb({b"type":b"Block", b"fingers":value.fingers, b"items":value.items, "index": value.index, "hid":value.hid, "aux": value.aux})
             self.r.set(key, o)
 
 
