@@ -107,7 +107,7 @@ class Block:
 class Chain:
     def __init__(self, store=None, root_hash=None):
         """Initialize a chain backed by a store."""
-        self.store = store or {}
+        self.store = store if store is not None else {}
         self.head = root_hash
 
     def root(self):
