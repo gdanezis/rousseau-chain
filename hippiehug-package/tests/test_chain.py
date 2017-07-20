@@ -73,6 +73,38 @@ def test_chain_negative():
 
     with pytest.raises(Exception) as IX:
         assert c.get(150, 30) == b"50|30"
-    
+
     with pytest.raises(Exception) as IX:
         assert c.get(50, 130) == b"50|30"
+
+def test_chain_pre_commit():
+    c = Chain()
+    items = ["main"]
+
+    def add_aux_data(block):
+        block.aux = ["aux"]
+
+    c.multi_add(items, pre_commit_fn=add_aux_data)
+    block = c.store[c.head]
+
+    assert block.items == ["main"]
+    assert block.aux == ["aux"]
+    assert block.hash() in c.store
+
+def test_chain_default_store():
+    c = Chain()
+    c.multi_add(["test"])
+    assert c.get(0, 0) is not None
+
+    c2 = Chain()
+    assert c2.get(0, 0) is None
+
+def test_chain_empty_store():
+    store = {}
+    c = Chain(store)
+    c.multi_add(["test"])
+    assert c.get(0, 0) == "test"
+
+    c2 = Chain(store, root_hash=c.head)
+    assert c2.get(0, 0) == "test"
+
