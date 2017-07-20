@@ -1,6 +1,5 @@
 from hippiehug import RedisStore, Tree, Leaf, Branch
-import redis
-
+import pytest
 
 ## ============== TESTS ===================
 
@@ -23,6 +22,7 @@ def _flushDB():
     r = redis.StrictRedis(host='localhost', port=6379, db=0)
     r.flushdb()
 
+@pytest.mark.skip(reason="no redis")
 def test_store():
      _flushDB()
 
@@ -32,6 +32,7 @@ def test_store():
      r[l.identity()] = l
      assert r[l.identity()].identity() == l.identity()
 
+@pytest.mark.skip(reason="no redis")
 def test_store_tree():
      _flushDB()
 

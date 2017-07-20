@@ -87,11 +87,13 @@ class RedisChain():
 # ## ====================================================
 # ## -------------------- TESTS -------------------------
 
+import pytest
 
+@pytest.mark.skip(reason="no redis")
 def test_init():
     rc = RedisChain(b"test1")
 
-
+@pytest.mark.skip(reason="no redis")
 def test_get_set():
     rc = RedisChain(b"test1")
 
@@ -109,7 +111,7 @@ def test_get_set():
     b2 = rc[b.hid]
     assert b == b2
 
-
+@pytest.mark.skip(reason="no redis")
 def test_create_add():
 
     rc = RedisChain(b"test3")
