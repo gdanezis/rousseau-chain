@@ -1,5 +1,5 @@
 
-VERSION = "0.0.7"
+VERSION = "0.0.9"
 
 from .Tree import Tree
 from .Chain import Chain, Block, DocChain

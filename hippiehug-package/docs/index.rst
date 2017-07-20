@@ -67,7 +67,7 @@ The key security property offered by the hippiehug Tree relates to *high-integri
 However, *availability* properties are not guaranteed: a store that does not respond, loses or modifies data can make operations fail. Replicating the store across different parties can mitigate this.
 
 The Merkle Tree & Chain Classes
------------------------
+-------------------------------
 
 .. autoclass:: hippiehug.Tree
    :members:
