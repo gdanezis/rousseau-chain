@@ -1,5 +1,15 @@
-from hippiehug import RedisStore, Tree, Leaf, Branch
+from hippiehug import Tree, Leaf, Branch
 import pytest
+
+## ============= FIXTURES =================
+
+@pytest.fixture
+def rstore():
+    """ Provide a flushed StrictRedis localhost instance. """
+    redis = pytest.importorskip("redis")
+    r = redis.StrictRedis(host='localhost', port=6379, db=0)
+    r.flushdb()
+    return r
 
 ## ============== TESTS ===================
 
@@ -18,33 +28,24 @@ def test_evidence():
      t2 = Tree(store, root)
      assert t2.is_in(b"World")
 
-def _flushDB():
-    r = redis.StrictRedis(host='localhost', port=6379, db=0)
-    r.flushdb()
 
-@pytest.mark.skip(reason="no redis")
-def test_store():
-     _flushDB()
+def test_store(rstore):
+    r = rstore
+    l = Leaf(b"Hello", b"Hello")
+    rstore[l.identity()] = l
+    assert rstore[l.identity()].identity() == l.identity()
 
-     r = RedisStore()
 
-     l = Leaf(b"Hello", b"Hello")
-     r[l.identity()] = l
-     assert r[l.identity()].identity() == l.identity()
+def test_store_tree(rstore):
+    t = Tree(store=rstore)
 
-@pytest.mark.skip(reason="no redis")
-def test_store_tree():
-     _flushDB()
+    from os import urandom
+    for _ in range(100):
+        item = urandom(32)
+        t.add(item, item)
+        assert t.is_in(item)
+        assert not t.is_in(urandom(32))
 
-     r = RedisStore()
-     t = Tree(store = r)
-
-     from os import urandom
-     for _ in range(100):
-          item = urandom(32)
-          t.add(item, item)
-          assert t.is_in(item)
-          assert not t.is_in(urandom(32))
 
 def test_leaf_isin():
      l = Leaf(b"Hello", b"Hello")
