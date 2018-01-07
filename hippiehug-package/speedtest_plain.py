@@ -1,10 +1,11 @@
+from __future__ import print_function
 import cProfile
 from hippiehug import Tree
 import StringIO
 import pstats
 
 def main():
-	t = Tree()	
+	t = Tree()
 
 	from os import urandom
 	for _ in range(1000):
@@ -25,4 +26,4 @@ if __name__ == "__main__":
 	ps.sort_stats(sortby)
 	ps.strip_dirs()
 	ps.print_stats()
-	print s.getvalue()
+	print(s.getvalue())
