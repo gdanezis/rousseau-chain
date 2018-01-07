@@ -19,15 +19,9 @@ def test_evidence():
     t2 = Tree(store, root)
     assert b"World" in t2
 
-def test_store():
-    redis = pytest.importorskip("redis")
-    r = redis.StrictRedis(host='localhost', port=6379, db=0)
-    r.flushdb()
-
-    from hippiehug import Tree, RedisStore
-    r = RedisStore(host="localhost", port=6379, db=0)
-    t = Tree(store = r)
-
+def test_store(rstore):
+    from hippiehug import Tree
+    t = Tree(store=rstore)
     t.add(b"Hello")
     assert b"Hello" in t
 

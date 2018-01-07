@@ -22,7 +22,7 @@ def ext_hook(code, data):
     """ Deserialize objects using msgpack. """
     if code == 42:
         l_item, l_key = msgpack.unpackb(data)
-        return Leaf(l_item, l_key) 
+        return Leaf(l_item, l_key)
     if code == 43:
         piv, r_leaf, l_leaf = msgpack.unpackb(data)
         return Branch(piv, r_leaf, l_leaf)
@@ -31,17 +31,17 @@ def ext_hook(code, data):
 
 
 class RedisStore():
-    def __init__(self, host="localhost", port=6379, db=0):
+    def __init__(self, redisdb):
         """ Initialize a Redis backed store for the Merkle Tree. """
-        self.r = redis.StrictRedis(host=host, port=port, db=db)
+        self.r = redisdb
         self.cache = {}
 
     def __getitem__(self, key):
         if key in self.cache:
             return self.cache[key]
-        
+
         if len(self.cache) > 10000:
-            self.cache = {} 
+            self.cache = {}
 
         bdata = self.r.get(key)
         branch = msgpack.unpackb(bdata, ext_hook=ext_hook)
