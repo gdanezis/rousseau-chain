@@ -1,6 +1,7 @@
 from hippiehug import RedisStore, Tree, Leaf, Branch
 import pytest
 
+
 ## ============== TESTS ===================
 
 
@@ -18,33 +19,23 @@ def test_evidence():
      t2 = Tree(store, root)
      assert t2.is_in(b"World")
 
-def _flushDB():
-    r = redis.StrictRedis(host='localhost', port=6379, db=0)
-    r.flushdb()
 
-@pytest.mark.skip(reason="no redis")
-def test_store():
-     _flushDB()
+def test_store(rstore):
+    l = Leaf(b"Hello", b"Hello")
+    rstore[l.identity()] = l
+    assert rstore[l.identity()].identity() == l.identity()
 
-     r = RedisStore()
 
-     l = Leaf(b"Hello", b"Hello")
-     r[l.identity()] = l
-     assert r[l.identity()].identity() == l.identity()
+def test_store_tree(rstore):
+    t = Tree(store=rstore)
 
-@pytest.mark.skip(reason="no redis")
-def test_store_tree():
-     _flushDB()
+    from os import urandom
+    for _ in range(100):
+        item = urandom(32)
+        t.add(item, item)
+        assert t.is_in(item)
+        assert not t.is_in(urandom(32))
 
-     r = RedisStore()
-     t = Tree(store = r)
-
-     from os import urandom
-     for _ in range(100):
-          item = urandom(32)
-          t.add(item, item)
-          assert t.is_in(item)
-          assert not t.is_in(urandom(32))
 
 def test_leaf_isin():
      l = Leaf(b"Hello", b"Hello")
@@ -237,17 +228,17 @@ def test_double_add():
 
 def test_tree_default_store():
     t = Tree()
-    t.multi_add(["test"])
-    assert t.is_in("test")
+    t.multi_add([b"test"])
+    assert t.is_in(b"test")
 
     t2 = Tree()
-    assert not t2.is_in("test")
+    assert not t2.is_in(b"test")
 
 def test_tree_empty_store():
     store = {}
     t = Tree(store)
-    t.multi_add(["test"])
-    assert t.is_in("test")
+    t.multi_add([b"test"])
+    assert t.is_in(b"test")
 
     t2 = Tree(store, root_hash=t.root())
-    assert t2.is_in("test")
+    assert t2.is_in(b"test")

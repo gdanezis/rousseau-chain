@@ -89,12 +89,12 @@ class RedisChain():
 
 import pytest
 
-@pytest.mark.skip(reason="no redis")
 def test_init():
+    pytest.importorskip("redis")
     rc = RedisChain(b"test1")
 
-@pytest.mark.skip(reason="no redis")
 def test_get_set():
+    pytest.importorskip("redis")
     rc = RedisChain(b"test1")
 
     d = Document(b"Hello")
@@ -111,9 +111,8 @@ def test_get_set():
     b2 = rc[b.hid]
     assert b == b2
 
-@pytest.mark.skip(reason="no redis")
 def test_create_add():
-
+    pytest.importorskip("redis")
     rc = RedisChain(b"test3")
     rc.add([b"Hello1",b"World2"])
 
