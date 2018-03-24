@@ -1,4 +1,4 @@
-from copy import copy
+from copy import copy, deepcopy
 from binascii import hexlify
 from msgpack import packb
 
@@ -34,10 +34,10 @@ class Document:
 class Block:
     def __init__(self, items, index=0, fingers=None, aux=None):
         """Initialize a block."""
-        self.items = items
+        self.items = deepcopy(items)
         self.index = index
-        self.fingers = fingers or []
-        self.aux = None
+        self.fingers = deepcopy(fingers) if fingers else []
+        self.aux = deepcopy(aux)
 
     def hash(self):
         """Return the head of the block."""

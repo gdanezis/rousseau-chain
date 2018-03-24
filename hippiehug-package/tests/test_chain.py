@@ -8,6 +8,28 @@ def test_block_hash():
 
     b1 = b0.next_block(store, [b"item3", b"item4"])
 
+def test_block_duplicated():
+    b0 = Block(items=[b"item1", b"item2"], index=0, fingers=[b"A", b"B"], aux=42)
+    assert b0.aux == 42
+
+    b1 = Block(b0.items, b0.index, b0.fingers, b0.aux)
+
+    assert b0.items == b1.items
+    assert b0.index == b1.index
+    assert b0.fingers == b1.fingers
+    assert b0.aux == b1.aux
+
+def test_block_constructor_independence():
+    items, fingers, aux = [], [], []
+    b0 = Block(items, 0, fingers, aux)
+    items.append(1)
+    fingers.append(1)
+    aux.append(1)
+    assert b0.items == []
+    assert b0.fingers == []
+    assert b0.aux == []
+
+
 def test_block_find():
     store = {}
     b0 = Block( [b"item1", b"item2"], 0, [])
