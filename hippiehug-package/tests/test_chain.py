@@ -8,6 +8,7 @@ def test_block_hash():
 
     b1 = b0.next_block(store, [b"item3", b"item4"])
 
+
 def test_block_duplicated():
     b0 = Block(items=[b"item1", b"item2"], index=0, fingers=[b"A", b"B"], aux=42)
     assert b0.aux == 42
@@ -18,6 +19,28 @@ def test_block_duplicated():
     assert b0.index == b1.index
     assert b0.fingers == b1.fingers
     assert b0.aux == b1.aux
+
+
+def test_block_with_hash_duplicated():
+    cc = {
+        'mtr_hash': None,
+        'metadata': {
+            'params': {
+                'dh_pk': 'VVREziRt5sorx9pqi5xpj16t1ibH1XPmNPqXBfCRNZD',
+                'sig_pk': 'VVRF1XiSmteSYFVkBdu9VY588CyPNKymZ6igm9xoEgN',
+                'vrf_pk': 'VVRF2rC2EFimdovJ5yhSx3BLpKsTy7iMTnvsK6NDskB',
+                'rescue_pk': 'VVREycH7jJqvhoEfP7ejAxfz1DAe5cKBUi1zet5cjnt'
+            },
+            'identity_info': "I'm VVREziRt5sorx9pqi5xpj16t1ibH1XPmNPqXBfCRNZD"
+        },
+        'version': 1,
+        'nonce': 'Q3JTBfZr3Q1PZ1JRfx3KNn',
+        'timestamp': 1525089767.931872
+    }
+    b0 = Block(items=[cc], index=0, fingers=[], aux=42)
+    b1 = Block(b0.items, b0.index, b0.fingers, b0.aux)
+    assert b0.hid == b1.hid
+
 
 def test_block_constructor_independence():
     items, fingers, aux = [], [], []
@@ -43,6 +66,7 @@ def test_block_find():
     res1 =  b0.get_item(store, 50, 30)
     assert res1 == b"50|30"
     assert b0.get_item(store, 0, 1) == b"item2"
+
 
 def test_chain():
     vals = []
