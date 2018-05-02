@@ -14,6 +14,17 @@ def check_hash(key, val):
         raise Exception("Value has the wrong hash.")
 
 
+def sort_dicts(unsorted):
+    if isinstance(unsorted, dict):
+        return sorted({k: sort_dicts(v) for k,v in unsorted.items()})
+    if isinstance(unsorted, list):
+        # do not sort lists. they do have a defined order already.
+        # we need to sort their elements though.
+        return [sort_dicts(e) for e in unsorted]
+    else:
+        return unsorted
+
+
 class Document:
     __slots__ = ["item", "hid"]
 
@@ -42,7 +53,7 @@ class Block:
     def hash(self):
         """Return the head of the block."""
         return binary_hash(packb(
-                ("S", self.index, self.fingers, self.items, self.aux)))
+                ("S", self.index, self.fingers, sort_dicts(self.items), self.aux)))
 
     @property
     def hid(self):
