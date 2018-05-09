@@ -37,9 +37,12 @@ def test_block_with_hash_duplicated():
         'nonce': 'Q3JTBfZr3Q1PZ1JRfx3KNn',
         'timestamp': 1525089767.931872
     }
-    b0 = Block(items=[cc], index=0, fingers=[], aux=42)
-    b1 = Block(b0.items, b0.index, b0.fingers, b0.aux)
-    assert b0.hid == b1.hid
+    orig = Block(items=[cc], index=0, fingers=[], aux=42)
+    copy = Block(orig.items, orig.index, orig.fingers, orig.aux)
+    cc['timestamp'] = 1525089767.931234
+    changed_value = Block([cc], orig.index, orig.fingers, orig.aux)
+    assert orig.hid == copy.hid
+    assert orig.hid != changed_value.hid
 
 
 def test_block_constructor_independence():

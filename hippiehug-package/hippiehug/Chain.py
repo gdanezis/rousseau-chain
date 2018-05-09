@@ -16,7 +16,8 @@ def check_hash(key, val):
 
 def sort_dicts(unsorted):
     if isinstance(unsorted, dict):
-        return sorted({k: sort_dicts(v) for k,v in unsorted.items()})
+        values_sorted = {k: sort_dicts(v) for k,v in unsorted.items()}
+        return sorted(values_sorted.items())
     if isinstance(unsorted, list):
         # do not sort lists. they do have a defined order already.
         # we need to sort their elements though.
