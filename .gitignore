@@ -2,3 +2,7 @@
 /fnodes.dat
 /chain.pyc
 /store.pyc
+
+*.pyc
+*.pyo
+.*
