@@ -237,17 +237,17 @@ def test_double_add():
 
 def test_tree_default_store():
     t = Tree()
-    t.multi_add(["test"])
-    assert t.is_in("test")
+    t.multi_add([b"test"])
+    assert t.is_in(b"test")
 
     t2 = Tree()
-    assert not t2.is_in("test")
+    assert not t2.is_in(b"test")
 
 def test_tree_empty_store():
     store = {}
     t = Tree(store)
-    t.multi_add(["test"])
-    assert t.is_in("test")
+    t.multi_add([b"test"])
+    assert t.is_in(b"test")
 
     t2 = Tree(store, root_hash=t.root())
-    assert t2.is_in("test")
+    assert t2.is_in(b"test")
