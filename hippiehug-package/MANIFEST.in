@@ -1,0 +1,10 @@
+include *.txt
+include LICENSE
+include *.rst
+include tox.ini
+exclude .gitmodules
+exclude speed*.py
+exclude pavement.py
+prune docs
+recursive-include tests *.py
+recursive-include hippiehug *.py
