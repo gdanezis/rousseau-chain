@@ -1,3 +1,4 @@
+from __future__ import print_function
 import cProfile
 from hippiehug import Tree, RedisStore
 import StringIO
@@ -12,7 +13,7 @@ def _flushDB():
 
 def main():
 	r = RedisStore()
-	t = Tree(store=r)	
+	t = Tree(store=r)
 
 	from os import urandom
 	for _ in range(1000):
@@ -35,4 +36,4 @@ if __name__ == "__main__":
 	ps.strip_dirs()
 	ps.sort_stats(sortby)
 	ps.print_stats()
-	print s.getvalue()
+	print(s.getvalue())

@@ -10,10 +10,12 @@ class Leaf:
     __slots__ = ["key", "item", "hid"]
 
     def __init__(self, item, key):
+        assert isinstance(item, bytes)
         self.item = item
         """ The item stored in the Leaf. """
 
         assert key is not None
+        assert isinstance(key, bytes)
         self.key = key
         """ The key under which the item is stored in the leaf. """
 
@@ -119,7 +121,7 @@ class Branch:
 
             new_b_left = b_left.add(store, item, key)
             b = Branch(self.pivot, new_b_left.hid, self.right_branch)
-            
+
         else:
             b_right = store[self.right_branch]
             _check_hash(self.right_branch, b_right)
@@ -173,7 +175,7 @@ class Branch:
     def lookup(self, store, key):
         if key <= self.pivot:
             return store[self.left_branch].lookup(store, key)
-        else:   
+        else:
             return store[self.right_branch].lookup(store, key)
 
 
@@ -182,7 +184,7 @@ class Branch:
 
         if key <= self.pivot:
             return store[self.left_branch].is_in(store, item, key)
-        else:   
+        else:
             return store[self.right_branch].is_in(store, item, key)
 
 
@@ -191,14 +193,14 @@ class Branch:
             return
 
         assert keys is not None
-        
+
         assert len(items) == len(keys)
         work_list = [(self, items, keys)]
 
         while work_list != []:
 
             (work_node, work_items, work_keys) = work_list.pop()
-            
+
             if evidence is not None:
                 evidence.append( work_node )
 
@@ -230,7 +232,7 @@ class Branch:
                 if left_list != []:
                     _check_hash(work_node.left_branch, b_left)
                     work_list.append( (b_left, left_list, left_keys) )
-                    
+
                 b_right = store[work_node.right_branch]
                 if right_list != []:
                     _check_hash(work_node.right_branch, b_right)
@@ -241,7 +243,7 @@ class Branch:
         evidence = evidence + [ self ]
         if key <= self.pivot:
             return store[self.left_branch].evidence(store, evidence, key)
-        else:   
+        else:
             return store[self.right_branch].evidence(store, evidence, key)
 
     def check(self, store):
